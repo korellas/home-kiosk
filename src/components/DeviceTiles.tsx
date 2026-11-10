@@ -9,7 +9,7 @@ import {
   fanLabels,
 } from "../data/rooms";
 import { Icon } from "./Icon";
-import { Pill, Slider } from "./Controls";
+import { ActionButton, Pill, Slider } from "./Controls";
 import type { SheetId } from "./Header";
 
 type Open = (sheet: SheetId) => void;
@@ -49,7 +49,7 @@ function Tile({
       }}
     >
       <div className="device-copy">
-        <button
+        <ActionButton
           className="device-name"
           onClick={toggle ?? open}
           disabled={!!toggle && disabled}
@@ -62,7 +62,7 @@ function Tile({
             {value}
             <small>{unit}</small>
           </span>
-        </button>
+        </ActionButton>
         <button
           className="device-detail"
           aria-label={`${name} 상세`}
@@ -184,6 +184,7 @@ function RoomTiles({ room, open }: { room: RoomId; open: Open }) {
       >
         {summary.on && lights.lights.some(light => light.on && light.dimmable) && (
           <Slider
+            commitOnRelease
             label={`${room} 공간 밝기`}
             value={summary.on ? (summary.brightness ?? 50) : 0}
             mixed={summary.on && summary.brightness === null}

@@ -38,11 +38,11 @@ export function Header({
   const header = useRef<HTMLElement>(null);
   const clock = useRef<HTMLTimeElement>(null);
   const temperature = useRef<HTMLElement>(null);
+  const standbyLabel = useRef<HTMLSpanElement>(null);
+  const standbyPosition = useRef<{ minute: number; x: number; y: number } | null>(null);
   const { state, pending, offline } = useHome();
   const { time, date, period, now } = useClock(hour12);
   const driftMinute = Math.floor(now.getTime() / 60_000);
-  const driftX = standby ? Math.sin(driftMinute * 2.4) * 24 : 0;
-  const driftY = standby ? Math.cos(driftMinute * 2.4) * 24 : 0;
   const e = state.environment;
   const gauges = [
     { label: "실내", value: e.indoor, unit: "°", sheet: "indoor", note: null },
@@ -89,13 +89,25 @@ export function Header({
     const root = header.current,
       timeEl = clock.current,
       tempEl = temperature.current;
-    if (!root || !timeEl || !tempEl) return;
+    const labelEl = standbyLabel.current;
+    if (!root || !timeEl || !tempEl || !labelEl) return;
+    if (!standby) standbyPosition.current = null;
+    else if (standbyPosition.current?.minute !== driftMinute) {
+      standbyPosition.current = { minute: driftMinute, x: Math.random(), y: Math.random() };
+    }
     const update = () => {
       const timeScale = (portrait ? 280 : 240) / (portrait ? 200 : 120);
       const tempScale = (portrait ? 160 : 132) / 40;
       const timeHeight = timeEl.offsetHeight * timeScale,
         tempHeight = tempEl.offsetHeight * tempScale;
-      const timeTop = (height - timeHeight - tempHeight - 64) / 2 + driftY;
+      const groupWidth = Math.max(timeEl.offsetWidth * timeScale, tempEl.offsetWidth * tempScale);
+      const groupHeight = timeHeight + 64 + tempHeight + 20 + labelEl.offsetHeight;
+      const availableX = Math.max(0, width - groupWidth - 128);
+      const availableY = Math.max(0, height - groupHeight - 128);
+      const position = standbyPosition.current;
+      const driftX = ((position?.x ?? 0.5) - 0.5) * availableX;
+      const driftY = ((position?.y ?? 0.5) - 0.5) * availableY;
+      const timeTop = (height - groupHeight) / 2 + driftY;
       const tempTop = timeTop + timeHeight + 64;
       const move = (el: HTMLElement, ratio: number, top: number) =>
         `translate(${(width - el.offsetWidth * ratio) / 2 - el.offsetLeft + driftX}px, ${top - el.offsetTop}px) scale(${ratio})`;
@@ -116,13 +128,14 @@ export function Header({
     const observer = new ResizeObserver(update);
     observer.observe(timeEl);
     observer.observe(tempEl);
+    observer.observe(labelEl);
     update();
     return () => observer.disconnect();
-  }, [width, height, portrait, time, period, e.indoor, driftX, driftY]);
+  }, [width, height, portrait, time, period, e.indoor, standby, driftMinute]);
   return (
     <header ref={header} className={`header ${standby ? "standby" : ""}`}>
       <div className="standby-shade" aria-hidden="true" />
-      <span className="standby-label">실내 온도</span>
+      <span ref={standbyLabel} className="standby-label">실내 온도</span>
       <div className="header-main">
         <div className="clock">
           <time ref={clock}>{time}{period && <span className="clock-period"> {period}</span>}</time>

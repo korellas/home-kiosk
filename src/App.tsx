@@ -62,7 +62,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
   const [sheet, setSheet] = useState<SheetId | null>(null);
   const [screen, setScreen] = useState(readScreenSettings);
   const [cleanDeadline, setCleanDeadline] = useState<number | null>(null);
-  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const swipe = useRef<{ x: number; y: number; lastX: number; lastAt: number; velocity: number } | null>(null);
   const track = useRef<HTMLDivElement>(null);
   const dragOffset = useRef(0);
   const dragFrame = useRef<number | null>(null);
@@ -72,7 +72,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
     dragFrame.current = null;
     dragOffset.current = 0;
     track.current?.classList.remove("dragging");
-    track.current?.style.removeProperty("--drag-offset");
+    track.current?.style.removeProperty("transform");
   }, []);
   const dragged = useRef(false);
   const [standby, setStandby] = useState(false);
@@ -176,26 +176,31 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
           configuration ||
           cleanDeadline ||
           state.door.ringing ||
-          (event.target as HTMLElement).closest("button, input, dialog")
+          (event.target as HTMLElement).closest("input, dialog")
         )
           return;
         resetDrag();
-        swipe.current = { x: event.clientX, y: event.clientY };
-        track.current?.classList.add("dragging");
+        swipe.current = { x: event.clientX, y: event.clientY, lastX: event.clientX, lastAt: event.timeStamp, velocity: 0 };
       }}
       onPointerMove={(event) => {
         const start = swipe.current;
         if (!start) return;
         const dx = event.clientX - start.x,
           dy = event.clientY - start.y;
+        const elapsed = event.timeStamp - start.lastAt;
+        if (elapsed > 0) start.velocity = (event.clientX - start.lastX) / elapsed;
+        start.lastX = event.clientX;
+        start.lastAt = event.timeStamp;
         if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
           resetDrag();
           return;
         }
         if (Math.abs(dx) > 10 && !dragged.current) {
           dragged.current = true;
+          track.current?.classList.add("dragging");
           event.currentTarget.setPointerCapture(event.pointerId);
         }
+        if (!dragged.current) return;
         const edge =
           (pageIndex === 0 && dx > 0) ||
           (pageIndex === pages.length - 1 && dx < 0);
@@ -203,7 +208,9 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
         if (dragFrame.current === null) {
           dragFrame.current = requestAnimationFrame(() => {
             dragFrame.current = null;
-            track.current?.style.setProperty("--drag-offset", `${dragOffset.current}px`);
+            if (track.current) {
+              track.current.style.transform = `translateX(calc(var(--page-offset) + ${dragOffset.current}px))`;
+            }
           });
         }
       }}
@@ -213,12 +220,13 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
         if (!start) return;
         const dx = event.clientX - start.x;
         const dy = event.clientY - start.y;
-        if (Math.abs(dx) < viewport.width * 0.12 || Math.abs(dx) < Math.abs(dy))
-          return;
+        const flick = Math.abs(dx) >= 32 && event.timeStamp - start.lastAt <= 80 && Math.abs(start.velocity) >= 0.5;
+        if (Math.abs(dx) < Math.abs(dy) || (!flick && Math.abs(dx) < viewport.width * 0.12)) return;
+        const direction = flick ? start.velocity : dx;
         const index = pages.findIndex((p) => p.id === page);
         setPage(
           pages[
-            Math.max(0, Math.min(pages.length - 1, index + (dx < 0 ? 1 : -1)))
+            Math.max(0, Math.min(pages.length - 1, index + (direction < 0 ? 1 : -1)))
           ].id,
         );
       }}

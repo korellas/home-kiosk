@@ -10,7 +10,7 @@ import type { HomeAdapter, HomeCommand, HomeSnapshot } from "../data/types";
 
 type HomeContextValue = {
   state: HomeSnapshot;
-  send: (command: HomeCommand) => void;
+  send: (command: HomeCommand) => Promise<boolean>;
   pending: boolean;
   error: string | null;
   dismissError: () => void;
@@ -32,14 +32,16 @@ export function HomeProvider({
     (command: HomeCommand) => {
       setError(null);
       setRequests((value) => value + 1);
-      void adapter
+      return adapter
         .execute(command)
+        .then(() => true)
         .catch((reason: unknown) => {
           setError(
             reason instanceof Error
               ? reason.message
               : "명령을 보내지 못했어요. 다시 시도해 주세요.",
           );
+          return false;
         })
         .finally(() => setRequests((value) => value - 1));
     },

@@ -13,7 +13,7 @@ import {
 } from "../data/rooms";
 import type { RoomId } from "../data/types";
 import type { SheetId } from "./Header";
-import { Pill, Slider, Stat } from "./Controls";
+import { ActionButton, Pill, Slider, Stat } from "./Controls";
 import { Icon } from "./Icon";
 import {
   ClimateControls,
@@ -186,7 +186,7 @@ export function DetailSheet({
         <header className="sheet-heading">
           <h2 id="sheet-title">{title}</h2>
           {(sheet === "climate" || lightRoom) && (
-            <button
+            <ActionButton
               className="sheet-power"
               disabled={offline || (lightRoom ? !state.rooms[lightRoom].lights.some((light) => light.available) : !c.available)}
               onClick={() =>
@@ -204,7 +204,7 @@ export function DetailSheet({
                 }
               />
               {(lightRoom ? lightOn : c.on) ? "켜짐" : "꺼짐"}
-            </button>
+            </ActionButton>
           )}
           <button
             className="sheet-close"
@@ -230,7 +230,7 @@ export function DetailSheet({
                     className={`fixture ${l.on ? "on" : "off"}`}
                     key={l.id}
                   >
-                    <button
+                    <ActionButton
                       className="fixture-badge"
                       aria-label={`${l.name} ${l.on ? "끄기" : "켜기"}`}
                       aria-pressed={l.on}
@@ -238,7 +238,7 @@ export function DetailSheet({
                       onClick={toggle}
                     >
                       <Icon name={l.icon ?? "bulb"} />
-                    </button>
+                    </ActionButton>
                     <div className="fixture-copy">
                       <h3>{l.name}</h3>
                       <p>
@@ -254,6 +254,7 @@ export function DetailSheet({
                     <div className="fixture-controls">
                       {l.dimmable ? (
                         <Slider
+                          commitOnRelease
                           label={`${l.name} 밝기`}
                           disabled={offline || !l.available}
                           value={l.on ? l.brightness : 0}
@@ -278,6 +279,7 @@ export function DetailSheet({
                       {l.kelvin !== undefined && l.kelvinRange && (
                         <div className="color-temperature">
                           <Slider
+                            commitOnRelease
                             label={`${l.name} 색온도`}
                             min={l.kelvinRange[0]}
                             max={l.kelvinRange[1]}
@@ -368,6 +370,7 @@ export function DetailSheet({
                     </small>
                   </span>
                   <Slider
+                    commitOnRelease
                     label="커튼 열림 정도"
                     value={state.curtain.position}
                     color="white"
@@ -555,6 +558,7 @@ export function DetailSheet({
                   음량 <small>{m.volume}%</small>
                 </span>
                 <Slider
+                  commitOnRelease
                   label="스피커 음량"
                   value={m.volume}
                   color="white"
