@@ -81,7 +81,6 @@ button:enabled:active {
   background-color: oklch(1 0 0 / 0.18);
   transition-duration: 0s;
 }
-.page-track.dragging button:active { scale: 1; }
 .action-button { position: relative; }
 button[aria-busy="true"], input[aria-busy="true"] { cursor: progress; opacity: 1; }
 .control-spinner {
@@ -170,7 +169,7 @@ input {
   border-radius: 56px;
   background: #1a1a1a;
   color: #fff;
-  touch-action: pan-y;
+  touch-action: manipulation;
   user-select: none;
   letter-spacing: -0.01em;
   font-size: 16px;
@@ -183,23 +182,27 @@ input {
 }
 .page-track {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
+  inset: 0;
   display: flex;
-  transform: translateX(var(--page-offset));
-  will-change: transform;
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: none;
+  touch-action: pan-x;
+  scrollbar-width: none;
 }
-.page-track.dragging {
-  transition: none;
+.page-track[inert] {
+  overflow: hidden;
 }
 .dashboard-page {
   position: relative;
+  flex: 0 0 100%;
+  min-width: 0;
   height: 100%;
-  flex-shrink: 0;
   overflow: hidden;
   isolation: isolate;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 .backgrounds img {
   position: absolute;
@@ -220,6 +223,7 @@ input {
   pointer-events: none;
 }
 .header {
+  pointer-events: none;
   position: absolute;
   top: 0;
   left: 0;
@@ -227,6 +231,9 @@ input {
   padding: 64px 80px 0;
   z-index: 1;
   text-shadow: 0 1px 14px oklch(0 0 0 / 0.3);
+}
+.header button {
+  pointer-events: auto;
 }
 .header-main {
   display: flex;

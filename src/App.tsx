@@ -62,19 +62,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
   const [sheet, setSheet] = useState<SheetId | null>(null);
   const [screen, setScreen] = useState(readScreenSettings);
   const [cleanDeadline, setCleanDeadline] = useState<number | null>(null);
-  const swipe = useRef<{ x: number; y: number; lastX: number; lastAt: number; velocity: number } | null>(null);
   const track = useRef<HTMLDivElement>(null);
-  const dragOffset = useRef(0);
-  const dragFrame = useRef<number | null>(null);
-  const resetDrag = useCallback(() => {
-    swipe.current = null;
-    if (dragFrame.current !== null) cancelAnimationFrame(dragFrame.current);
-    dragFrame.current = null;
-    dragOffset.current = 0;
-    track.current?.classList.remove("dragging");
-    track.current?.style.removeProperty("transform");
-  }, []);
-  const dragged = useRef(false);
   const [standby, setStandby] = useState(false);
   useEffect(() => {
     if (state.door.ringing) {
@@ -84,10 +72,18 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
     }
   }, [state.door.ringing]);
   const pageIndex = pages.findIndex((p) => p.id === page);
+  const pagingBlocked = Boolean(standby || sheet || configuration || cleanDeadline || state.door.ringing);
+  const scrollToPage = useCallback((index: number) => {
+    const scroller = track.current;
+    if (scroller) scroller.scrollTo({ left: index * scroller.clientWidth, behavior: "instant" });
+  }, []);
   useLayoutEffect(() => {
-    resetDrag();
-    return resetDrag;
-  }, [page, viewport, standby, sheet, configuration, cleanDeadline, state.door.ringing, resetDrag]);
+    scrollToPage(pageIndex);
+  }, [pageIndex, viewport, pagingBlocked, scrollToPage]);
+  const navigate = (id: PageId) => {
+    scrollToPage(pages.findIndex((p) => p.id === id));
+    setPage(id);
+  };
   const enterStandby = () => {
     setSheet(null);
     setStandby(true);
@@ -161,90 +157,29 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
         } as CSSProperties
       }
       onClickCapture={(event) => {
-        if (standby || dragged.current) {
+        if (standby) {
           event.preventDefault();
           event.stopPropagation();
-          dragged.current = false;
-          if (standby) setStandby(false);
+          setStandby(false);
         }
       }}
-      onPointerDown={(event) => {
-        dragged.current = false;
-        if (
-          standby ||
-          sheet ||
-          configuration ||
-          cleanDeadline ||
-          state.door.ringing ||
-          (event.target as HTMLElement).closest("input, dialog")
-        )
-          return;
-        resetDrag();
-        swipe.current = { x: event.clientX, y: event.clientY, lastX: event.clientX, lastAt: event.timeStamp, velocity: 0 };
-      }}
-      onPointerMove={(event) => {
-        const start = swipe.current;
-        if (!start) return;
-        const dx = event.clientX - start.x,
-          dy = event.clientY - start.y;
-        const elapsed = event.timeStamp - start.lastAt;
-        if (elapsed > 0) start.velocity = (event.clientX - start.lastX) / elapsed;
-        start.lastX = event.clientX;
-        start.lastAt = event.timeStamp;
-        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
-          resetDrag();
-          return;
-        }
-        if (Math.abs(dx) > 10 && !dragged.current) {
-          dragged.current = true;
-          track.current?.classList.add("dragging");
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }
-        if (!dragged.current) return;
-        const edge =
-          (pageIndex === 0 && dx > 0) ||
-          (pageIndex === pages.length - 1 && dx < 0);
-        dragOffset.current = dx / scale / (edge ? 3 : 1);
-        if (dragFrame.current === null) {
-          dragFrame.current = requestAnimationFrame(() => {
-            dragFrame.current = null;
-            if (track.current) {
-              track.current.style.transform = `translateX(calc(var(--page-offset) + ${dragOffset.current}px))`;
-            }
-          });
-        }
-      }}
-      onPointerUp={(event) => {
-        const start = swipe.current;
-        resetDrag();
-        if (!start) return;
-        const dx = event.clientX - start.x;
-        const dy = event.clientY - start.y;
-        const flick = Math.abs(dx) >= 32 && event.timeStamp - start.lastAt <= 80 && Math.abs(start.velocity) >= 0.5;
-        if (Math.abs(dx) < Math.abs(dy) || (!flick && Math.abs(dx) < viewport.width * 0.12)) return;
-        const direction = flick ? start.velocity : dx;
-        const index = pages.findIndex((p) => p.id === page);
-        setPage(
-          pages[
-            Math.max(0, Math.min(pages.length - 1, index + (direction < 0 ? 1 : -1)))
-          ].id,
-        );
-      }}
-      onPointerCancel={resetDrag}
     >
       <div
         ref={track}
         className="page-track"
-        style={{
-          width: `${pages.length * 100}%`,
-          "--page-offset": `${(-100 * pageIndex) / pages.length}%`,
-        } as CSSProperties}
+        inert={pagingBlocked}
+        onScrollEnd={(event) => {
+          if (pagingBlocked) return;
+          const scroller = event.currentTarget;
+          const index = Math.round(scroller.scrollLeft / scroller.clientWidth);
+          const settled = pages[index];
+          if (settled) setPage(settled.id);
+        }}
       >
         {pages.map((p) => (
           <section
             key={p.id}
             className="dashboard-page"
-            style={{ flexBasis: `${100 / pages.length}%` }}
             inert={p.id !== page}
             aria-label={p.name}
           >
@@ -272,7 +207,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
       <Header
           configure={configure}
         page={page}
-        onPage={setPage}
+        onPage={navigate}
         open={setSheet}
         standby={standby}
         hour12={screen.hour12}
@@ -287,7 +222,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
             aria-label={`${p.name}로 이동`}
             aria-current={p.id === page ? "page" : undefined}
             className={p.id === page ? "active" : ""}
-            onClick={() => setPage(p.id)}
+            onClick={() => navigate(p.id)}
           >
             <span />
           </button>
