@@ -59,7 +59,17 @@ export function App({ configure, configuration }: { configure?: () => void; conf
   const [screen, setScreen] = useState(readScreenSettings);
   const [cleanDeadline, setCleanDeadline] = useState<number | null>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
-  const [drag, setDrag] = useState({ offset: 0, active: false });
+  const track = useRef<HTMLDivElement>(null);
+  const dragOffset = useRef(0);
+  const dragFrame = useRef<number | null>(null);
+  const resetDrag = useCallback(() => {
+    swipe.current = null;
+    if (dragFrame.current !== null) cancelAnimationFrame(dragFrame.current);
+    dragFrame.current = null;
+    dragOffset.current = 0;
+    track.current?.classList.remove("dragging");
+    track.current?.style.removeProperty("--drag-offset");
+  }, []);
   const dragged = useRef(false);
   const [standby, setStandby] = useState(false);
   useEffect(() => {
@@ -70,6 +80,10 @@ export function App({ configure, configuration }: { configure?: () => void; conf
     }
   }, [state.door.ringing]);
   const pageIndex = pages.findIndex((p) => p.id === page);
+  useLayoutEffect(() => {
+    resetDrag();
+    return resetDrag;
+  }, [page, viewport, standby, sheet, configuration, cleanDeadline, state.door.ringing, resetDrag]);
   const enterStandby = () => {
     setSheet(null);
     setStandby(true);
@@ -150,13 +164,15 @@ export function App({ configure, configuration }: { configure?: () => void; conf
         if (
           standby ||
           sheet ||
+          configuration ||
           cleanDeadline ||
           state.door.ringing ||
           (event.target as HTMLElement).closest("button, input, dialog")
         )
           return;
+        resetDrag();
         swipe.current = { x: event.clientX, y: event.clientY };
-        setDrag({ offset: 0, active: true });
+        track.current?.classList.add("dragging");
       }}
       onPointerMove={(event) => {
         const start = swipe.current;
@@ -164,8 +180,7 @@ export function App({ configure, configuration }: { configure?: () => void; conf
         const dx = event.clientX - start.x,
           dy = event.clientY - start.y;
         if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
-          swipe.current = null;
-          setDrag({ offset: 0, active: false });
+          resetDrag();
           return;
         }
         if (Math.abs(dx) > 10 && !dragged.current) {
@@ -175,12 +190,17 @@ export function App({ configure, configuration }: { configure?: () => void; conf
         const edge =
           (pageIndex === 0 && dx > 0) ||
           (pageIndex === pages.length - 1 && dx < 0);
-        setDrag({ offset: dx / scale / (edge ? 3 : 1), active: true });
+        dragOffset.current = dx / scale / (edge ? 3 : 1);
+        if (dragFrame.current === null) {
+          dragFrame.current = requestAnimationFrame(() => {
+            dragFrame.current = null;
+            track.current?.style.setProperty("--drag-offset", `${dragOffset.current}px`);
+          });
+        }
       }}
       onPointerUp={(event) => {
         const start = swipe.current;
-        swipe.current = null;
-        setDrag({ offset: 0, active: false });
+        resetDrag();
         if (!start) return;
         const dx = event.clientX - start.x;
         const dy = event.clientY - start.y;
@@ -193,17 +213,15 @@ export function App({ configure, configuration }: { configure?: () => void; conf
           ].id,
         );
       }}
-      onPointerCancel={() => {
-        swipe.current = null;
-        setDrag({ offset: 0, active: false });
-      }}
+      onPointerCancel={resetDrag}
     >
       <div
-        className={`page-track ${drag.active ? "dragging" : ""}`}
+        ref={track}
+        className="page-track"
         style={{
           width: `${pages.length * 100}%`,
-          transform: `translateX(calc(${(-100 * pageIndex) / pages.length}% + ${drag.offset}px))`,
-        }}
+          "--page-offset": `${(-100 * pageIndex) / pages.length}%`,
+        } as CSSProperties}
       >
         {pages.map((p) => (
           <section
