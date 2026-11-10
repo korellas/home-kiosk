@@ -36,7 +36,7 @@ function readScreenSettings() {
     return { brightness: 70, night: false, hour12: false };
   }
 }
-export function App({ configure, configuration }: { configure?: () => void; configuration?: ReactNode } = {}) {
+export function App({ configure, configuration, chime }: { configure?: () => void; configuration?: ReactNode; chime?: () => Promise<void> } = {}) {
   const { state } = useHome();
   const [viewport, setViewport] = useState(() => ({
     width: window.innerWidth,
@@ -295,7 +295,7 @@ export function App({ configure, configuration }: { configure?: () => void; conf
       {cleanDeadline && (
         <CleaningOverlay deadline={cleanDeadline} finish={finishCleaning} />
       )}
-      {state.door.ringing && <DoorCall view={() => setSheet("door")} />}
+      {state.door.ringing && <DoorCall view={() => setSheet("door")} chime={chime} />}
       {!sheet && !state.door.ringing && <CommandError />}
       {configuration}
     </div>

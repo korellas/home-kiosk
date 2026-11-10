@@ -342,7 +342,7 @@ export function DetailSheet({
                     disabled={offline || !c.available}
                     onClick={() => send({ type: "climate", patch: { fan } })}
                   >
-                    {fanLabels[fan]}
+                    {fanLabels[fan as keyof typeof fanLabels] ?? fan}
                   </Pill>
                 ))}
               </div>
@@ -465,7 +465,7 @@ export function DetailSheet({
         {sheet === "vent" && (
           <>
             <div className="control-row">
-              {(Object.keys(fanLabels) as (keyof typeof fanLabels)[]).map(
+              {(state.ventilation.modes ?? Object.keys(fanLabels) as (keyof typeof fanLabels)[]).map(
                 (mode) => (
                   <Pill
                     key={mode}
@@ -481,7 +481,7 @@ export function DetailSheet({
                 ),
               )}
             </div>
-            <div className="boost-row">
+            {state.ventilation.supportsBoost !== false && <div className="boost-row">
               <div>
                 <h3>
                   {state.ventilation.boostUntil
@@ -499,11 +499,11 @@ export function DetailSheet({
               >
                 {state.ventilation.boostUntil ? "중지" : "시작"}
               </Pill>
-            </div>
+            </div>}
           </>
         )}
         {sheet === "media" &&
-          (m.title ? (
+          (m.title || m.available ? (
             <>
               <div className="media-detail">
                 <div className="album-art">
@@ -514,7 +514,7 @@ export function DetailSheet({
                   )}
                 </div>
                 <div className="media-copy">
-                  <h3>{m.title}</h3>
+                  <h3>{m.title || "재생 대기"}</h3>
                   <p>{m.artist}</p>
                   {m.duration !== undefined && m.elapsed !== undefined && (
                     <>
@@ -532,17 +532,17 @@ export function DetailSheet({
                     </>
                   )}
                   <div className="control-row media-transport">
-                    <Pill icon="previous" label="이전 곡" />
+                    <Pill icon="previous" label="이전 곡" disabled={offline || !m.available || !m.canPrevious} onClick={() => send({ type: "media-skip", direction: "previous" })} />
                     <Pill
                       icon={m.playing ? "pause" : "play"}
                       active
                       label={m.playing ? "미디어 일시정지" : "미디어 재생"}
-                      disabled={offline || !m.available}
+                      disabled={offline || !m.available || (m.playing ? m.canPause === false : m.canPlay === false)}
                       onClick={() =>
                         send({ type: "media-play", playing: !m.playing })
                       }
                     />
-                    <Pill icon="next" label="다음 곡" />
+                    <Pill icon="next" label="다음 곡" disabled={offline || !m.available || !m.canNext} onClick={() => send({ type: "media-skip", direction: "next" })} />
                   </div>
                 </div>
               </div>
@@ -554,7 +554,7 @@ export function DetailSheet({
                   label="스피커 음량"
                   value={m.volume}
                   color="white"
-                  disabled={offline || !m.available}
+                  disabled={offline || !m.available || m.canVolume === false}
                   onChange={(value) => send({ type: "media-volume", value })}
                 />
               </label>
@@ -618,7 +618,7 @@ export function DetailSheet({
                 aria-label="문 열기 · 기기 연동 필요"
               >
                 <Icon name="lock" />
-                길게 눌러 문 열기
+                문 열기 · 지원 예정
               </button>
             </div>
           </div>

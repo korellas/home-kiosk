@@ -22,7 +22,7 @@ export function Pill({
       type="button"
       className={`pill ${active ? "selected" : ""} ${!children ? "icon-only" : ""}`}
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || !onClick}
       aria-label={label}
       aria-pressed={active}
     >

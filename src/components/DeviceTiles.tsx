@@ -103,7 +103,7 @@ export function CurtainControls() {
           active={
             action !== "stop" && c.direction === (action === "open" ? 1 : -1)
           }
-          disabled={offline || !c.available}
+          disabled={offline || !c.available || (c.actions !== undefined && !c.actions.includes(action))}
           onClick={() => send({ type: "curtain", action })}
         >
           <span className="curtain-button-label">
@@ -122,17 +122,17 @@ export function ClimateControls() {
       <Pill
         icon="minus"
         label="설정 온도 낮추기"
-        disabled={offline || !c.available || !c.on || c.target <= c.min}
+        disabled={offline || !c.available || !c.on || c.supportsTemperature === false || c.target <= c.min}
         onClick={() =>
-          send({ type: "climate", patch: { target: c.target - 1 } })
+          send({ type: "climate", patch: { target: Math.max(c.min, c.target - (c.step ?? 1)) } })
         }
       />
       <Pill
         icon="plus"
         label="설정 온도 높이기"
-        disabled={offline || !c.available || !c.on || c.target >= c.max}
+        disabled={offline || !c.available || !c.on || c.supportsTemperature === false || c.target >= c.max}
         onClick={() =>
-          send({ type: "climate", patch: { target: c.target + 1 } })
+          send({ type: "climate", patch: { target: Math.min(c.max, c.target + (c.step ?? 1)) } })
         }
       />
     </div>
@@ -149,7 +149,7 @@ export function SceneControls({ room }: { room: RoomId }) {
             state.rooms[room].scene === scene.id &&
             roomSummary(state.rooms[room]).on
           }
-          disabled={offline || !state.rooms[room].lights.some((light) => light.available)}
+          disabled={offline || (state.rooms[room].availableScenes ? !state.rooms[room].availableScenes!.includes(scene.id) : !state.rooms[room].lights.some(light => light.available))}
           onClick={() => send({ type: "scene", room, scene: scene.id })}
         >
           {scene.name}
@@ -182,7 +182,7 @@ function RoomTiles({ room, open }: { room: RoomId; open: Open }) {
         value={summary.on ? (summary.brightness ?? "개별") : lights.lights.length ? "꺼짐" : "—"}
         unit={summary.on && summary.brightness !== null ? "%" : ""}
       >
-        {summary.on && (
+        {summary.on && lights.lights.some(light => light.on && light.dimmable) && (
           <Slider
             label={`${room} 공간 밝기`}
             value={summary.on ? (summary.brightness ?? 50) : 0}
@@ -199,7 +199,7 @@ function RoomTiles({ room, open }: { room: RoomId; open: Open }) {
             ? lights.scene
               ? `${sceneName} 적용됨`
               : "개별 설정"
-            : "조명 꺼짐"
+            : lights.lights.length ? "조명 꺼짐" : "미연동"
         }
         value={summary.on ? sceneName : "—"}
         open={() => open(`light:${room}`)}
@@ -211,10 +211,7 @@ function RoomTiles({ room, open }: { room: RoomId; open: Open }) {
         <>
           <Tile
             name="커튼"
-            status={curtainLabel(
-              state.curtain.position,
-              state.curtain.direction,
-            )}
+            status={state.curtain.available ? curtainLabel(state.curtain.position, state.curtain.direction) : "미연동 또는 연결 끊김"}
             value={state.curtain.position ?? "—"}
             unit={state.curtain.position !== null ? "%" : ""}
             on={state.curtain.direction !== 0}
@@ -230,9 +227,9 @@ function RoomTiles({ room, open }: { room: RoomId; open: Open }) {
                 ? c.on
                   ? `${hvacLabels[c.mode]} · 현재 ${c.current ?? "—"}°`
                   : "꺼짐"
-                : "연결 끊김"
+                : "미연동 또는 연결 끊김"
             }
-            value={c.on ? (c.mode === "fan_only" ? "송풍" : c.target) : "꺼짐"}
+            value={!c.available ? "—" : c.on ? (c.mode === "fan_only" ? "송풍" : c.target) : "꺼짐"}
             unit={c.on && c.mode !== "fan_only" ? "°" : ""}
             on={c.on}
             color="var(--cool)"
@@ -256,12 +253,12 @@ function RoomTiles({ room, open }: { room: RoomId; open: Open }) {
                   icon={m.playing ? "pause" : "play"}
                   label={m.playing ? "미디어 일시정지" : "미디어 재생"}
                   active
-                  disabled={offline || !m.available}
+                  disabled={offline || !m.available || (m.playing ? m.canPause === false : m.canPlay === false)}
                   onClick={() =>
                     send({ type: "media-play", playing: !m.playing })
                   }
                 />
-                <Pill icon="next" label="다음 곡" />
+                <Pill icon="next" label="다음 곡" disabled={offline || !m.available || !m.canNext} onClick={() => send({ type: "media-skip", direction: "next" })} />
               </div>
             )}
           </Tile>
@@ -304,7 +301,7 @@ export function DeviceTiles({
           <Tile
             chevron
             name="조명"
-            status={count ? `${spaces}곳 · ${count}개 켜짐` : "모두 꺼짐"}
+            status={!lightsAvailable ? "미연동" : count ? `${spaces}곳 · ${count}개 켜짐` : "모두 꺼짐"}
             value={count}
             unit="개"
             on={count > 0}
@@ -329,7 +326,7 @@ export function DeviceTiles({
             chevron
             name="환기"
             status={
-              vent.boostUntil
+              !vent.available ? "미연동 또는 연결 끊김" : vent.boostUntil
                 ? "강풍 · 타이머 운전"
                 : `${fanLabels[vent.mode]} 운전`
             }
@@ -341,7 +338,7 @@ export function DeviceTiles({
             <div className="control-row">
               <Pill
                 icon="auto"
-                disabled={offline || !vent.available}
+                disabled={offline || !vent.available || (vent.modes !== undefined && !vent.modes.includes("auto"))}
                 active={!vent.boostUntil && vent.mode === "auto"}
                 onClick={() => send({ type: "ventilation", mode: "auto" })}
               >
@@ -349,9 +346,9 @@ export function DeviceTiles({
               </Pill>
               <Pill
                 icon="air"
-                disabled={offline || !vent.available}
-                active={!!vent.boostUntil}
-                onClick={() => send({ type: "boost", on: !vent.boostUntil })}
+                disabled={offline || !vent.available || (vent.modes !== undefined && !vent.modes.includes("high"))}
+                active={vent.supportsBoost === false ? vent.mode === "high" : !!vent.boostUntil}
+                onClick={() => send(vent.supportsBoost === false ? { type: "ventilation", mode: "high" } : { type: "boost", on: !vent.boostUntil })}
               >
                 강풍
               </Pill>

@@ -10,6 +10,34 @@ function hass(states: Record<string, HassEntity>, connected = true): HomeAssista
   return { states, connected };
 }
 
+test("selected devices reflect HA state and capabilities and control waits for reported state", async () => {
+  const commands: unknown[] = [];
+  const adapter = createHassAdapter(undefined, async command => { commands.push(command); });
+  const config = { lights: { living: ["light.room"] }, climate_entity: "climate.room", curtain_entity: "cover.room", media_entity: "media_player.room", indoor_entity: "sensor.room" };
+  adapter.update(hass({
+    "light.room": entity("on", { friendly_name: "Room light", brightness: 128, supported_color_modes: ["brightness"] }),
+    "light.other": entity("on"),
+    "climate.room": entity("heat", { hvac_modes: ["heat", "off"], fan_modes: ["quiet"], fan_mode: "quiet", temperature: 22, current_temperature: 20, supported_features: 1 }),
+    "cover.room": entity("opening", { current_position: 40, supported_features: 7 }),
+    "media_player.room": entity("playing", { volume_level: 0.3, supported_features: 4 | 32 }),
+    "sensor.room": entity("21.4"),
+  }), config);
+  const state = adapter.getSnapshot();
+  assert.equal(state.rooms.living.lights.length, 1);
+  assert.equal(state.rooms.living.lights[0].brightness, 50);
+  assert.deepEqual(state.climate.modes, ["heat"]);
+  assert.deepEqual(state.climate.fans, ["quiet"]);
+  assert.deepEqual(state.curtain.actions, ["open", "close"]);
+  assert.equal(state.media.canNext, true);
+  assert.equal(state.media.canPrevious, false);
+  assert.equal(state.environment.indoor, 21.4);
+  await adapter.execute({ type: "room-power", room: "living", on: false });
+  assert.equal(commands.length, 1);
+  assert.equal(adapter.getSnapshot().rooms.living.lights[0].on, true);
+  adapter.update(hass({}, false), config);
+  await assert.rejects(adapter.execute({ type: "room-power", room: "living", on: false }), /연결/);
+});
+
 test("selected event entity rings on a new call, without replaying startup history", async () => {
   const adapter = createHassAdapter();
   const config = { doorbell_entity: "event.chosen_doorbell" };

@@ -52,6 +52,8 @@ export function roomSummary(room: RoomState) {
 
 export const hvacLabels = {
   cool: "냉방",
+  heat: "난방",
+  heat_cool: "냉난방",
   dry: "제습",
   fan_only: "송풍",
   auto: "자동",

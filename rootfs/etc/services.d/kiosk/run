@@ -33,6 +33,7 @@ chromium_args=(
     --ozone-platform=wayland
     --kiosk
     --no-first-run
+    --autoplay-policy=no-user-gesture-required
     --user-data-dir="${PROFILE_DIR}"
     --password-store=basic
     # The sandbox needs user namespaces, which the container does not permit.

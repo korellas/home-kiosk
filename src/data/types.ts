@@ -1,6 +1,6 @@
 export type RoomId = "living" | "kitchen" | "dining";
 export type PageId = "home" | RoomId;
-export type HvacMode = "cool" | "dry" | "fan_only" | "auto";
+export type HvacMode = "cool" | "dry" | "fan_only" | "auto" | "heat" | "heat_cool";
 export type FanMode = "auto" | "low" | "medium" | "high";
 
 export interface Light {
@@ -17,6 +17,7 @@ export interface Light {
 export interface RoomState {
   lights: readonly Light[];
   scene: string | null;
+  availableScenes?: readonly string[];
 }
 export interface ClimateState {
   available: boolean;
@@ -27,8 +28,10 @@ export interface ClimateState {
   max: number;
   mode: HvacMode;
   modes: readonly HvacMode[];
-  fan: FanMode;
-  fans: readonly FanMode[];
+  fan: string;
+  fans: readonly string[];
+  supportsTemperature?: boolean;
+  step?: number;
 }
 export interface HomeSnapshot {
   connection: "demo" | "online" | "offline";
@@ -62,19 +65,26 @@ export interface HomeSnapshot {
     position: number | null;
     direction: -1 | 0 | 1;
     supportsPosition: boolean;
+    actions?: readonly ("open" | "close" | "stop")[];
   };
-  ventilation: { available: boolean; mode: FanMode; boostUntil: number | null };
+  ventilation: { available: boolean; mode: FanMode; boostUntil: number | null; modes?: readonly FanMode[]; supportsBoost?: boolean };
   media: {
     available: boolean;
     title: string | null;
     artist: string;
     playing: boolean;
     volume: number;
+    canPlay?: boolean;
+    canPause?: boolean;
+    canNext?: boolean;
+    canPrevious?: boolean;
+    canVolume?: boolean;
     artworkUrl?: string | null;
     elapsed?: number;
     duration?: number;
   };
   door: {
+    soundError?: string | null;
     configured?: boolean;
     available?: boolean;
     ringing: boolean;
@@ -109,6 +119,7 @@ export type HomeCommand =
   | { type: "boost"; on: boolean }
   | { type: "media-play"; playing: boolean }
   | { type: "media-volume"; value: number }
+  | { type: "media-skip"; direction: "next" | "previous" }
   | { type: "door-dismiss" };
 
 export interface HomeAdapter {

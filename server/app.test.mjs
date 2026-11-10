@@ -15,7 +15,9 @@ class FakeHA extends EventEmitter {
     "light.private": { state: "on", attributes: {} },
   };
   users = [{ id: "admin", is_active: true, group_ids: ["system-admin"] }, { id: "viewer", is_active: true, group_ids: ["system-users"] }];
+  calls = [];
   async request(message) {
+    if (message.type === "call_service") { this.calls.push(message); return; }
     assert.equal(message.type, "config/auth/list");
     if (!this.connected) throw new Error("offline");
     return this.users;
@@ -64,7 +66,7 @@ test("standalone app protects settings, persists selections and filters its came
   } finally { await app.close(); await rm(dir, { recursive: true, force: true }); }
 });
 
-test("physical kiosk is read-only and untrusted peers cannot spoof Ingress headers", async () => {
+test("physical kiosk cannot edit settings and untrusted peers cannot spoof Ingress headers", async () => {
   const dir = await mkdtemp(join(tmpdir(), "home-kiosk-security-"));
   const app = await createApp({ ha: new FakeHA(), dataDir: dir, frontendDir: dir });
   try {
@@ -72,5 +74,27 @@ test("physical kiosk is read-only and untrusted peers cannot spoof Ingress heade
     assert.equal(await app.canConfigure(fakeRequest("127.0.0.1")), false);
     assert.equal(await app.canConfigure(fakeRequest("203.0.113.42")), false);
     assert.equal(await app.canConfigure(fakeRequest("172.30.32.2")), true);
+  } finally { await app.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test("physical controls are restricted to selected devices and settings remain admin-only", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "home-kiosk-controls-"));
+  await writeFile(join(dir, "connection.json"), JSON.stringify({ lights: { living: ["light.private"] } }));
+  const ha = new FakeHA(), app = await createApp({ ha, dataDir: dir, frontendDir: dir });
+  app.server.listen(0, "127.0.0.1");
+  await new Promise(resolve => app.server.once("listening", resolve));
+  const base = `http://127.0.0.1:${app.server.address().port}`;
+  const headers = { "Content-Type": "application/json", "X-Home-Kiosk": "settings" };
+  const command = { type: "room-power", room: "living", on: false };
+  try {
+    assert.equal((await fetch(`${base}/api/command`, { method: "POST", headers, body: JSON.stringify(command) })).status, 200);
+    assert.equal(ha.calls.length, 1);
+    assert.deepEqual(ha.calls[0].target, { entity_id: "light.private" });
+    assert.equal((await fetch(`${base}/api/command`, { method: "POST", headers: { ...headers, "Sec-Fetch-Site": "cross-site" }, body: JSON.stringify(command) })).status, 403);
+    assert.equal((await fetch(`${base}/api/command`, { method: "POST", headers, body: JSON.stringify({ type: "light", room: "living", id: "light.unselected", patch: { on: false } }) })).status, 400);
+    assert.equal((await fetch(`${base}/api/settings`, { method: "PUT", headers, body: "{}" })).status, 403);
+    assert.equal((await fetch(`${base}/api/test-sound`, { method: "POST", headers, body: "{}" })).status, 403);
+    assert.equal(ha.calls.length, 1);
+    assert.equal((await (await fetch(`${base}/api/session`)).json()).local_display, true);
   } finally { await app.close(); await rm(dir, { recursive: true, force: true }); }
 });
