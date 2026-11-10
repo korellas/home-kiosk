@@ -35,7 +35,10 @@ test("HA bridge authenticates, subscribes and applies state events without expos
     const socket = FakeSocket.instances.at(-1);
     assert.deepEqual(socket.sent[0], { type: "auth", access_token: "test-supervisor-secret" });
     assert.ok(socket.sent.some((message) => message.type === "subscribe_events" && message.event_type === "state_changed"));
+    let changedEntity;
+    client.once("change", (id) => { changedEntity = id; });
     socket.receive({ type: "event", event: { data: { entity_id: "event.entry", new_state: { state: "2026-11-10T10:00:00Z", attributes: {} } } } });
+    assert.equal(changedEntity, "event.entry");
     assert.equal(client.states["event.entry"].state, "2026-11-10T10:00:00Z");
     assert.doesNotMatch(JSON.stringify(client), /test-supervisor-secret/);
     socket.close();

@@ -20,13 +20,19 @@ const dateFormat = new Intl.DateTimeFormat("ko-KR", {
   weekday: "long",
 });
 
-export function useClock(hour12 = false) {
+export function useClock(hour12 = false, resolution = 60_000) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  const parts = twelveHourFormat.formatToParts(now);
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const time = Date.now();
+      setNow(new Date(time));
+      timer = setTimeout(tick, resolution - (time % resolution));
+    };
+    timer = setTimeout(tick, resolution - (Date.now() % resolution));
+    return () => clearTimeout(timer);
+  }, [resolution]);
+  const parts = hour12 ? twelveHourFormat.formatToParts(now) : [];
   return {
     now,
     time: hour12

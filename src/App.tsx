@@ -20,6 +20,11 @@ import { DoorCall } from "./components/DoorCall";
 
 export const IDLE_TIMEOUT_MS = 60_000;
 
+function HomeDate() {
+  const { date } = useClock();
+  return <>{date}</>;
+}
+
 function readScreenSettings() {
   try {
     const settings = JSON.parse(
@@ -53,7 +58,6 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
     viewport.width / (portrait ? 1080 : 1920),
     viewport.height / (portrait ? 1920 : 1080),
   );
-  const { date } = useClock();
   const [page, setPage] = useState<PageId>("living");
   const [sheet, setSheet] = useState<SheetId | null>(null);
   const [screen, setScreen] = useState(readScreenSettings);
@@ -91,15 +95,20 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
   useEffect(() => {
     if (standby || sheet || configuration || cleanDeadline || state.door.ringing) return;
     let timer: ReturnType<typeof setTimeout>;
+    let lastActivity = performance.now();
     const reset = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => setStandby(true), IDLE_TIMEOUT_MS);
+      lastActivity = performance.now();
+    };
+    const check = () => {
+      const remaining = IDLE_TIMEOUT_MS - (performance.now() - lastActivity);
+      if (remaining <= 0) setStandby(true);
+      else timer = setTimeout(check, remaining);
     };
     const events = ["pointerdown", "pointermove", "keydown", "wheel"] as const;
     events.forEach((name) =>
       window.addEventListener(name, reset, { passive: true }),
     );
-    reset();
+    timer = setTimeout(check, IDLE_TIMEOUT_MS);
     return () => {
       clearTimeout(timer);
       events.forEach((name) => window.removeEventListener(name, reset));
@@ -133,7 +142,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
     if (id === "home")
       return portrait
         ? `조명 켜진 공간 ${Object.values(state.rooms).filter((room) => roomSummary(room).on).length}곳${state.climate.on ? ` · 에어컨 ${hvacLabels[state.climate.mode]}` : ""}`
-        : date;
+        : <HomeDate />;
     const summary = roomSummary(state.rooms[id]);
     const scene = scenes[id].find((s) => s.id === state.rooms[id].scene)?.name;
     return summary.on ? `조명 켜짐 · ${scene ?? "개별 설정"}` : "조명 꺼짐";

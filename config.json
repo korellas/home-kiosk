@@ -1,6 +1,6 @@
 {
   "name": "Home Kiosk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "slug": "home_kiosk",
   "description": "Local home dashboard with selectable HA doorbell and built-in kiosk display",
   "url": "https://github.com/korellas/home-kiosk",

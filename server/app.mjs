@@ -16,6 +16,7 @@ class HTTPError extends Error {
 }
 const peer = (request) => request.socket.remoteAddress?.replace(/^::ffff:/, "");
 const local = (request) => ["127.0.0.1", "::1"].includes(peer(request));
+const entityDomains = new Set([...Object.values(entityFields).flat(), "light", "scene"]);
 
 export async function createApp({ ha, dataDir, frontendDir, ingressAddress = "172.30.32.2" }) {
   const root = resolve(frontendDir);
@@ -23,6 +24,7 @@ export async function createApp({ ha, dataDir, frontendDir, ingressAddress = "17
   let config;
   try { config = JSON.parse(await readFile(configFile, "utf8")); }
   catch (error) { if (error.code !== "ENOENT") throw error; config = {}; }
+  let selected = new Set(selectedEntities(config));
   const clients = new Set();
   const ingress = (request) => peer(request) === ingressAddress;
   const json = (response, status, value) => {
@@ -34,13 +36,17 @@ export async function createApp({ ha, dataDir, frontendDir, ingressAddress = "17
     sound_error: soundError,
     connected: ha.connected,
     config,
-    states: Object.fromEntries(selectedEntities(config).flatMap((id) => {
+    states: Object.fromEntries([...selected].flatMap((id) => {
       const entity = ha.states[id];
       return entity ? [[id, { state: entity.state, attributes: Object.fromEntries(stateAttributes.filter(key => entity.attributes?.[key] !== undefined).map(key => [key, entity.attributes[key]])) }]] : [];
     })),
   });
-  const broadcast = () => {
+  let lastEvent;
+  const broadcast = (entityId) => {
+    if (!clients.size || (entityId && !selected.has(entityId))) return;
     const event = `data: ${JSON.stringify(snapshot())}\n\n`;
+    if (event === lastEvent) return;
+    lastEvent = event;
     for (const response of clients) response.write(event);
   };
   const bell = watchDoorbell(ha, () => config, error => { soundError = error; broadcast(); });
@@ -81,7 +87,7 @@ export async function createApp({ ha, dataDir, frontendDir, ingressAddress = "17
       if (request.method === "GET" && url.pathname === "/api/session") return json(response, 200, { can_configure: await canConfigure(request), local_display: local(request) && !ingress(request) });
       if (request.method === "GET" && url.pathname === "/api/entities") {
         await admin(request);
-        return json(response, 200, Object.entries(ha.states).filter(([id]) => [...new Set(Object.values(entityFields).flat()), "light", "scene"].includes(id.split(".")[0])).map(([id, entity]) => ({ id, name: entity.attributes?.friendly_name || id, domain: id.split(".")[0], state: entity.state, unit: entity.attributes?.unit_of_measurement, device_class: entity.attributes?.device_class })).sort((a, b) => a.name.localeCompare(b.name)));
+        return json(response, 200, Object.entries(ha.states).filter(([id]) => entityDomains.has(id.split(".")[0])).map(([id, entity]) => ({ id, name: entity.attributes?.friendly_name || id, domain: id.split(".")[0], state: entity.state, unit: entity.attributes?.unit_of_measurement, device_class: entity.attributes?.device_class })).sort((a, b) => a.name.localeCompare(b.name)));
       }
       if (request.method === "PUT" && url.pathname === "/api/settings") {
         await admin(request);
@@ -91,6 +97,7 @@ export async function createApp({ ha, dataDir, frontendDir, ingressAddress = "17
         try { await writeFile(temporary, JSON.stringify(next), { mode: 0o600 }); await rename(temporary, configFile); }
         finally { await rm(temporary, { force: true }); }
         config = next;
+        selected = new Set(selectedEntities(config));
         soundError = null;
         bell.reset();
         broadcast();
@@ -111,7 +118,8 @@ export async function createApp({ ha, dataDir, frontendDir, ingressAddress = "17
       }
       if (request.method === "GET" && url.pathname === "/api/events") {
         response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", "X-Accel-Buffering": "no" });
-        response.write(`data: ${JSON.stringify(snapshot())}\n\n`);
+        lastEvent = `data: ${JSON.stringify(snapshot())}\n\n`;
+        response.write(lastEvent);
         clients.add(response);
         response.on("close", () => clients.delete(response));
         return;

@@ -22,6 +22,11 @@ import {
   curtainLabel,
 } from "./DeviceTiles";
 
+function BoostRemaining({ deadline }: { deadline: number }) {
+  const { now } = useClock(false, 1000);
+  return <>강풍 운전 중 · {Math.ceil(Math.max(0, deadline - now.getTime()) / 60_000)}분 남음</>;
+}
+
 export function DetailSheet({
   sheet,
   close,
@@ -53,7 +58,6 @@ export function DetailSheet({
   const swiped = useRef(false);
   const lastWheel = useRef(0);
   const { state, send, offline } = useHome();
-  const { now } = useClock();
   const lightRoom = sheet.startsWith("light:")
     ? (sheet.split(":")[1] as RoomId)
     : null;
@@ -485,7 +489,7 @@ export function DetailSheet({
               <div>
                 <h3>
                   {state.ventilation.boostUntil
-                    ? `강풍 운전 중 · ${Math.ceil(Math.max(0, state.ventilation.boostUntil - now.getTime()) / 60_000)}분 남음`
+                    ? <BoostRemaining deadline={state.ventilation.boostUntil} />
                     : "20분 강하게"}
                 </h3>
                 <p>끝나면 이전 모드로 돌아갑니다</p>

@@ -57,7 +57,7 @@ export class HomeAssistantClient extends EventEmitter {
         const { entity_id, new_state } = message.event.data;
         if (new_state) this.states[entity_id] = new_state;
         else delete this.states[entity_id];
-        if (this.connected) this.emit("change");
+        if (this.connected) this.emit("change", entity_id);
       }
     });
     socket.addEventListener("error", () => socket.close());

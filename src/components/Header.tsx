@@ -118,7 +118,7 @@ export function Header({
     observer.observe(tempEl);
     update();
     return () => observer.disconnect();
-  }, [width, height, portrait, time, period, e, driftX, driftY]);
+  }, [width, height, portrait, time, period, e.indoor, driftX, driftY]);
   return (
     <header ref={header} className={`header ${standby ? "standby" : ""}`}>
       <div className="standby-shade" aria-hidden="true" />
