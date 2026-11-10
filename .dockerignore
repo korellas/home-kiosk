@@ -11,3 +11,7 @@ server/*.test.mjs
 .env
 config.local.js
 /data
+.env.*
+AGENTS.md
+.agents
+.codex
