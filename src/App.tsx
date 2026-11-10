@@ -30,9 +30,10 @@ function readScreenSettings() {
         ? Math.min(100, Math.max(10, settings.brightness))
         : 70,
       night: settings.night === true,
+      hour12: settings.hour12 === true,
     };
   } catch {
-    return { brightness: 70, night: false };
+    return { brightness: 70, night: false, hour12: false };
   }
 }
 export function App({ configure, configuration }: { configure?: () => void; configuration?: ReactNode } = {}) {
@@ -239,6 +240,7 @@ export function App({ configure, configuration }: { configure?: () => void; conf
         onPage={setPage}
         open={setSheet}
         standby={standby}
+        hour12={screen.hour12}
         portrait={portrait}
         width={viewport.width / scale}
         height={viewport.height / scale}
@@ -265,6 +267,8 @@ export function App({ configure, configuration }: { configure?: () => void; conf
           brightness={screen.brightness}
           setBrightness={(brightness) => settings({ brightness })}
           night={screen.night}
+          hour12={screen.hour12}
+          setHour12={(hour12) => settings({ hour12 })}
           toggleNight={() => settings({ night: !screen.night })}
           clean={clean}
           standby={enterStandby}

@@ -211,6 +211,13 @@ input {
   font-variant-numeric: tabular-nums;
   margin-left: -4px;
 }
+.clock-period {
+  font-size: 0.2em;
+  letter-spacing: 0;
+  margin-left: 0.4em;
+  font-weight: 400;
+  color: oklch(1 0 0 / 0.65);
+}
 .date {
   font-size: 26px;
   color: oklch(1 0 0 / 0.8);
@@ -1707,8 +1714,7 @@ input {
 .standby .gauge:first-child .gauge-reading strong {
   transform: var(--standby-temperature);
 }
-.standby-label,
-.standby-hint {
+.standby-label {
   position: absolute;
   left: 0;
   width: 100%;
@@ -1722,14 +1728,10 @@ input {
 }
 .standby-label {
   top: var(--standby-label-top);
+  transform: translateX(var(--standby-drift-x, 0px));
   font-size: 28px;
 }
-.standby-hint {
-  top: calc(var(--design-height) - 80px);
-  font-size: 24px;
-}
-.standby .standby-label,
-.standby .standby-hint {
+.standby .standby-label {
   opacity: 1;
 }
 .header .date,

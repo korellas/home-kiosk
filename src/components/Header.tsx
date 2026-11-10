@@ -20,6 +20,7 @@ export function Header({
   onPage,
   open,
   standby,
+  hour12,
   portrait,
   width,
   height,
@@ -29,6 +30,7 @@ export function Header({
   onPage: (page: PageId) => void;
   open: (sheet: SheetId) => void;
   standby: boolean;
+  hour12: boolean;
   portrait: boolean;
   width: number;
   height: number;
@@ -37,7 +39,10 @@ export function Header({
   const clock = useRef<HTMLTimeElement>(null);
   const temperature = useRef<HTMLElement>(null);
   const { state, pending, offline } = useHome();
-  const { time, date } = useClock();
+  const { time, date, period, now } = useClock(hour12);
+  const driftMinute = Math.floor(now.getTime() / 60_000);
+  const driftX = standby ? Math.sin(driftMinute * 2.4) * 24 : 0;
+  const driftY = standby ? Math.cos(driftMinute * 2.4) * 24 : 0;
   const e = state.environment;
   const gauges = [
     { label: "실내", value: e.indoor, unit: "°", sheet: "indoor", note: null },
@@ -90,10 +95,10 @@ export function Header({
       const tempScale = (portrait ? 160 : 132) / 40;
       const timeHeight = timeEl.offsetHeight * timeScale,
         tempHeight = tempEl.offsetHeight * tempScale;
-      const timeTop = (height - timeHeight - tempHeight - 64) / 2;
+      const timeTop = (height - timeHeight - tempHeight - 64) / 2 + driftY;
       const tempTop = timeTop + timeHeight + 64;
       const move = (el: HTMLElement, ratio: number, top: number) =>
-        `translate(${(width - el.offsetWidth * ratio) / 2 - el.offsetLeft}px, ${top - el.offsetTop}px) scale(${ratio})`;
+        `translate(${(width - el.offsetWidth * ratio) / 2 - el.offsetLeft + driftX}px, ${top - el.offsetTop}px) scale(${ratio})`;
       root.style.setProperty(
         "--standby-clock",
         move(timeEl, timeScale, timeTop),
@@ -102,6 +107,7 @@ export function Header({
         "--standby-temperature",
         move(tempEl, tempScale, tempTop),
       );
+      root.style.setProperty("--standby-drift-x", `${driftX}px`);
       root.style.setProperty(
         "--standby-label-top",
         `${tempTop + tempHeight + 20}px`,
@@ -112,15 +118,14 @@ export function Header({
     observer.observe(tempEl);
     update();
     return () => observer.disconnect();
-  }, [width, height, portrait, time, e]);
+  }, [width, height, portrait, time, period, e, driftX, driftY]);
   return (
     <header ref={header} className={`header ${standby ? "standby" : ""}`}>
       <div className="standby-shade" aria-hidden="true" />
       <span className="standby-label">실내 온도</span>
-      <span className="standby-hint">화면을 터치하면 돌아갑니다</span>
       <div className="header-main">
         <div className="clock">
-          <time ref={clock}>{time}</time>
+          <time ref={clock}>{time}{period && <span className="clock-period"> {period}</span>}</time>
           <div className="date">{date}</div>
         </div>
         <div className="environment">
