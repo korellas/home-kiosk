@@ -1,0 +1,194 @@
+import { useLayoutEffect, useRef } from "react";
+import { useHome } from "../hooks/useHome";
+import { useClock } from "../hooks/useClock";
+import { pages } from "../data/rooms";
+import type { PageId } from "../data/types";
+import { Icon } from "./Icon";
+export type SheetId =
+  | "weather"
+  | "indoor"
+  | "vent"
+  | "screen"
+  | "door"
+  | "climate"
+  | "curtain"
+  | "media"
+  | `light:${Exclude<PageId, "home">}`;
+export function Header({
+  configure,
+  page,
+  onPage,
+  open,
+  standby,
+  portrait,
+  width,
+  height,
+}: {
+  configure?: () => void;
+  page: PageId;
+  onPage: (page: PageId) => void;
+  open: (sheet: SheetId) => void;
+  standby: boolean;
+  portrait: boolean;
+  width: number;
+  height: number;
+}) {
+  const header = useRef<HTMLElement>(null);
+  const clock = useRef<HTMLTimeElement>(null);
+  const temperature = useRef<HTMLElement>(null);
+  const { state, pending, offline } = useHome();
+  const { time, date } = useClock();
+  const e = state.environment;
+  const gauges = [
+    { label: "실내", value: e.indoor, unit: "°", sheet: "indoor", note: null },
+    {
+      label: "습도",
+      value: e.humidity,
+      unit: "%",
+      sheet: "indoor",
+      note: null,
+    },
+    {
+      label: "실내 공기",
+      value: e.indoorPm25,
+      unit: "",
+      sheet: "indoor",
+      note: e.indoorAirLabel,
+    },
+    {
+      label: "실외 공기",
+      value: e.outdoorPm25,
+      unit: "",
+      sheet: "weather",
+      note: e.outdoorAirLabel,
+    },
+    ...(e.co2 !== undefined
+      ? [
+          {
+            label: "CO₂",
+            value: e.co2,
+            unit: "",
+            sheet: "indoor" as const,
+            note: "ppm",
+          },
+        ]
+      : []),
+  ] satisfies {
+    label: string;
+    value: number | null;
+    unit: string;
+    sheet: SheetId;
+    note: string | null;
+  }[];
+  useLayoutEffect(() => {
+    const root = header.current,
+      timeEl = clock.current,
+      tempEl = temperature.current;
+    if (!root || !timeEl || !tempEl) return;
+    const update = () => {
+      const timeScale = (portrait ? 280 : 240) / (portrait ? 200 : 120);
+      const tempScale = (portrait ? 160 : 132) / 40;
+      const timeHeight = timeEl.offsetHeight * timeScale,
+        tempHeight = tempEl.offsetHeight * tempScale;
+      const timeTop = (height - timeHeight - tempHeight - 64) / 2;
+      const tempTop = timeTop + timeHeight + 64;
+      const move = (el: HTMLElement, ratio: number, top: number) =>
+        `translate(${(width - el.offsetWidth * ratio) / 2 - el.offsetLeft}px, ${top - el.offsetTop}px) scale(${ratio})`;
+      root.style.setProperty(
+        "--standby-clock",
+        move(timeEl, timeScale, timeTop),
+      );
+      root.style.setProperty(
+        "--standby-temperature",
+        move(tempEl, tempScale, tempTop),
+      );
+      root.style.setProperty(
+        "--standby-label-top",
+        `${tempTop + tempHeight + 20}px`,
+      );
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(timeEl);
+    observer.observe(tempEl);
+    update();
+    return () => observer.disconnect();
+  }, [width, height, portrait, time, e]);
+  return (
+    <header ref={header} className={`header ${standby ? "standby" : ""}`}>
+      <div className="standby-shade" aria-hidden="true" />
+      <span className="standby-label">실내 온도</span>
+      <span className="standby-hint">화면을 터치하면 돌아갑니다</span>
+      <div className="header-main">
+        <div className="clock">
+          <time ref={clock}>{time}</time>
+          <div className="date">{date}</div>
+        </div>
+        <div className="environment">
+          <button
+            className="weather-summary"
+            onClick={() => open("weather")}
+            aria-label="날씨 상세"
+          >
+            <Icon name="weather" />
+            <span>
+              <strong>
+                {state.weather.temperature ?? "—"}
+                {state.weather.temperature !== null && "°"}
+              </strong>
+              <small>
+                {state.weather.high ?? "—"}° / {state.weather.low ?? "—"}°
+              </small>
+            </span>
+          </button>
+          <div className="gauges">
+            {gauges.map((g) => (
+              <button
+                key={g.label}
+                className="gauge"
+                onClick={() => open(g.sheet)}
+                aria-label={`${g.label} 상세`}
+              >
+                <span className="gauge-label">{g.label}</span>
+                <span className="gauge-reading">
+                  {g.note && g.value !== null && (
+                    <i
+                      className={`air-dot ${g.sheet === "weather" ? "outdoor" : ""}`}
+                    />
+                  )}
+                  <strong ref={g.label === "실내" ? temperature : undefined}>
+                    {g.value ?? "—"}
+                    {g.value !== null && g.unit}
+                  </strong>
+                  <small>{g.value !== null ? g.note : null}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="nav-line">
+        <nav className="room-nav" aria-label="공간 이동">
+          {pages.map((p) => (
+            <button
+              key={p.id}
+              className={p.id === page ? "active" : ""}
+              onClick={() => onPage(p.id)}
+              aria-current={p.id === page ? "page" : undefined}
+            >
+              {p.name}
+            </button>
+          ))}
+        </nav>
+        {configure && <button className="connection-settings" aria-label="연결 설정" onClick={configure}><Icon name="tune" /></button>}
+        {(pending || offline) && (
+          <div
+            className={`connection ${offline ? "disconnected" : ""}`}
+            role="status"
+          >
+            {pending ? "요청 중…" : "연결 끊김 · 마지막 상태"}
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}

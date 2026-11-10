@@ -1,0 +1,46 @@
+# https://developers.home-assistant.io/docs/apps/configuration#app-dockerfile
+FROM ghcr.io/home-assistant/base:3.24-2026.08.0 AS base
+
+# ------------------------------------------------------------------------------
+# Cage, patched for rotated touch input and hidden cursors on touchscreens.
+# ------------------------------------------------------------------------------
+FROM base AS cage-build
+
+ARG CAGE_VERSION=0.3.1
+ARG CAGE_SHA256=edafc173b6f56a3e1564933e272a54aaa9fe158d330e6a415d57b44ab880fe2b
+
+RUN apk add --no-cache \
+        build-base \
+        libxkbcommon-dev \
+        meson \
+        wayland-dev \
+        wayland-protocols \
+        wlroots0.20-dev
+
+ADD --checksum=sha256:${CAGE_SHA256} \
+    "https://github.com/cage-kiosk/cage/releases/download/v${CAGE_VERSION}/cage-${CAGE_VERSION}.tar.gz" \
+    /tmp/cage.tar.gz
+COPY patches/ /tmp/patches/
+WORKDIR /tmp/cage-${CAGE_VERSION}
+
+RUN tar -xzf /tmp/cage.tar.gz -C /tmp \
+    && for patch in /tmp/patches/*.patch; do patch -p1 < "${patch}"; done \
+    && meson setup build --buildtype=release -Dman-pages=disabled \
+    && meson compile -C build \
+    && install -Dm755 build/cage /out/usr/bin/cage
+
+# Home Kiosk app image. The frontend is built once before the image build.
+FROM base
+RUN apk add --no-cache \
+    chromium font-noto font-noto-cjk font-noto-emoji libinput-tools \
+    mesa-dri-gallium mesa-egl mesa-gbm nodejs wlr-randr wlroots0.20
+COPY --from=cage-build /out/ /
+COPY rootfs/ /
+COPY server/*.mjs /opt/home-kiosk/server/
+COPY dist/app/ /opt/home-kiosk/frontend/
+ARG BUILD_VERSION=dev
+ENV KIOSK_VERSION=${BUILD_VERSION} S6_SERVICES_GRACETIME=6000
+LABEL org.opencontainers.image.title="Home Kiosk" \
+    org.opencontainers.image.description="Local home dashboard, Home Assistant ingress and attached kiosk display." \
+    org.opencontainers.image.source="https://github.com/korellas/home-kiosk" \
+    org.opencontainers.image.licenses="MIT"

@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+custom_components
+tests
+dist/*
+!dist/app/
+!dist/app/**
+server/*.test.mjs
+*.log
+.env
+config.local.js
+/data

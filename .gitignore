@@ -1,0 +1,10 @@
+.DS_Store
+*.log
+.env
+.env.*
+/AGENTS.md
+config.local.js
+node_modules/
+dist/
+__pycache__/
+/data/
