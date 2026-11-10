@@ -30,6 +30,8 @@ export function DetailSheet({
   setBrightness,
   night,
   toggleNight,
+  hour12,
+  setHour12,
   clean,
   standby,
 }: {
@@ -40,6 +42,8 @@ export function DetailSheet({
   setBrightness: (value: number) => void;
   night: boolean;
   toggleNight: () => void;
+  hour12: boolean;
+  setHour12: (value: boolean) => void;
   clean: () => void;
   standby: () => void;
 }) {
@@ -560,6 +564,10 @@ export function DetailSheet({
           ))}
         {sheet === "screen" && (
           <>
+            <div className="control-row" role="group" aria-label="시간 표시">
+              <Pill active={hour12} onClick={() => setHour12(true)}>12시간제</Pill>
+              <Pill active={!hour12} onClick={() => setHour12(false)}>24시간제</Pill>
+            </div>
             <div className="screen-brightness">
               <Icon name="lowBrightness" />
               <Slider
