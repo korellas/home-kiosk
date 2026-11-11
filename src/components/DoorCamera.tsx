@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useHome } from "../hooks/useHome";
 
 export function DoorCamera() {
-  const { state, offline } = useHome();
-  const url = state.door.cameraUrl;
+  const { state, offline } = useHome(state => state.door);
+  const url = state.cameraUrl;
   const [frame, setFrame] = useState(0);
   const [failed, setFailed] = useState(false);
   useEffect(() => {

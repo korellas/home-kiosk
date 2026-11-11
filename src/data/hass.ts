@@ -1,3 +1,4 @@
+import { reuseUnchanged } from "./snapshot.ts";
 import type { HomeAdapter, HomeSnapshot, HomeCommand, RoomId, HvacMode, FanMode } from "./types.ts";
 
 export interface HassEntity {
@@ -101,8 +102,10 @@ export function createHassAdapter(cameraProxyUrl?: string, control?: (command: H
   let previousState: string | undefined;
   let initialized = false;
   const listeners = new Set<() => void>();
-  const publish = (door: HomeSnapshot["door"], connection = snapshot.connection) => {
-    snapshot = { ...snapshot, door, connection };
+  const publish = (door: HomeSnapshot["door"], connection = snapshot.connection, mapped = snapshot) => {
+    const next = reuseUnchanged(snapshot, { ...mapped, door, connection });
+    if (next === snapshot) return;
+    snapshot = next;
     listeners.forEach((listener) => listener());
   };
   return {
@@ -129,7 +132,7 @@ export function createHassAdapter(cameraProxyUrl?: string, control?: (command: H
         publish({ ...door, available: false, cameraUrl: null, ringing: false }, "offline");
         return;
       }
-      snapshot = { ...snapshot, ...mappedState(hass, config) };
+      const mapped = { ...snapshot, ...mappedState(hass, config) };
       const bell = config.doorbell_entity ? hass.states[config.doorbell_entity] : undefined;
       const camera = config.camera_entity ? hass.states[config.camera_entity] : undefined;
       const picture = available(camera) ? camera.attributes.entity_picture : null;
@@ -161,7 +164,7 @@ export function createHassAdapter(cameraProxyUrl?: string, control?: (command: H
         previousState = bell.state;
         initialized = true;
       }
-      publish(door, "online");
+      publish(door, "online", mapped);
     },
     async execute(command) {
       if (command.type !== "door-dismiss") {

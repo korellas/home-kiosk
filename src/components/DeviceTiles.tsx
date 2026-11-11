@@ -1,5 +1,6 @@
+import { memo } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { useHome } from "../hooks/useHome";
+import { useHome, useHomeValue } from "../hooks/useHome";
 import type { RoomId, PageId } from "../data/types";
 import {
   scenes,
@@ -91,8 +92,7 @@ export function curtainLabel(position: number | null, direction: number) {
         : `${position}% 열림`;
 }
 export function CurtainControls() {
-  const { state, send, offline } = useHome();
-  const c = state.curtain;
+  const { state: c, send, offline } = useHome(state => state.curtain);
   return (
     <div className="control-row">
       {(["open", "stop", "close"] as const).map((action, i) => (
@@ -115,8 +115,7 @@ export function CurtainControls() {
   );
 }
 export function ClimateControls() {
-  const { state, send, offline } = useHome();
-  const c = state.climate;
+  const { state: c, send, offline } = useHome(state => state.climate);
   return (
     <div className="control-row">
       <Pill
@@ -139,17 +138,17 @@ export function ClimateControls() {
   );
 }
 export function SceneControls({ room }: { room: RoomId }) {
-  const { state, send, offline } = useHome();
+  const { state: lights, send, offline } = useHome(state => state.rooms[room]);
   return (
     <div className="control-row scenes">
       {scenes[room].map((scene) => (
         <Pill
           key={scene.id}
           active={
-            state.rooms[room].scene === scene.id &&
-            roomSummary(state.rooms[room]).on
+            lights.scene === scene.id &&
+            roomSummary(lights).on
           }
-          disabled={offline || (state.rooms[room].availableScenes ? !state.rooms[room].availableScenes!.includes(scene.id) : !state.rooms[room].lights.some(light => light.available))}
+          disabled={offline || (lights.availableScenes ? !lights.availableScenes!.includes(scene.id) : !lights.lights.some(light => light.available))}
           onClick={() => send({ type: "scene", room, scene: scene.id })}
         >
           {scene.name}
@@ -159,13 +158,10 @@ export function SceneControls({ room }: { room: RoomId }) {
   );
 }
 function RoomTiles({ room, open }: { room: RoomId; open: Open }) {
-  const { state, send, offline } = useHome();
-  const lights = state.rooms[room];
+  const { state: lights, send, offline } = useHome(state => state.rooms[room]);
   const summary = roomSummary(lights);
   const sceneName =
     scenes[room].find((s) => s.id === lights.scene)?.name ?? "개별";
-  const c = state.climate;
-  const m = state.media;
   return (
     <>
       <Tile
@@ -208,66 +204,74 @@ function RoomTiles({ room, open }: { room: RoomId; open: Open }) {
       >
         <SceneControls room={room} />
       </Tile>
-      {room === "living" && (
-        <>
-          <Tile
-            name="커튼"
-            status={state.curtain.available ? curtainLabel(state.curtain.position, state.curtain.direction) : "미연동 또는 연결 끊김"}
-            value={state.curtain.position ?? "—"}
-            unit={state.curtain.position !== null ? "%" : ""}
-            on={state.curtain.direction !== 0}
-            color="white"
-            open={() => open("curtain")}
-          >
-            <CurtainControls />
-          </Tile>
-          <Tile
-            name="에어컨"
-            status={
-              c.available
-                ? c.on
-                  ? `${hvacLabels[c.mode]} · 현재 ${c.current ?? "—"}°`
-                  : "꺼짐"
-                : "미연동 또는 연결 끊김"
-            }
-            value={!c.available ? "—" : c.on ? (c.mode === "fan_only" ? "송풍" : c.target) : "꺼짐"}
-            unit={c.on && c.mode !== "fan_only" ? "°" : ""}
-            on={c.on}
-            color="var(--cool)"
-            disabled={offline || !c.available}
-            toggle={() => send({ type: "climate", patch: { on: !c.on } })}
-            open={() => open("climate")}
-          >
-            {c.mode !== "fan_only" && <ClimateControls />}
-          </Tile>
-          <Tile
-            name={m.title ?? "미디어"}
-            status={m.title ? m.artist : "재생 중인 미디어가 없어요"}
-            on={!!m.title && m.playing}
-            color="white"
-            open={() => open("media")}
-            className="media-tile"
-          >
-            {m.title && (
-              <div className="control-row">
-                <Pill
-                  icon={m.playing ? "pause" : "play"}
-                  label={m.playing ? "미디어 일시정지" : "미디어 재생"}
-                  active
-                  disabled={offline || !m.available || (m.playing ? m.canPause === false : m.canPlay === false)}
-                  onClick={() =>
-                    send({ type: "media-play", playing: !m.playing })
-                  }
-                />
-                <Pill icon="next" label="다음 곡" disabled={offline || !m.available || !m.canNext} onClick={() => send({ type: "media-skip", direction: "next" })} />
-              </div>
-            )}
-          </Tile>
-        </>
-      )}
+      {room === "living" && <LivingTiles open={open} />}
     </>
   );
 }
+const LivingTiles = memo(function LivingTiles({ open }: { open: Open }) {
+  const { state: c, send, offline } = useHome(state => state.climate);
+  const curtain = useHomeValue(state => state.curtain);
+  const m = useHomeValue(state => state.media);
+  return (
+
+    <>
+      <Tile
+        name="커튼"
+        status={curtain.available ? curtainLabel(curtain.position, curtain.direction) : "미연동 또는 연결 끊김"}
+        value={curtain.position ?? "—"}
+        unit={curtain.position !== null ? "%" : ""}
+        on={curtain.direction !== 0}
+        color="white"
+        open={() => open("curtain")}
+      >
+        <CurtainControls />
+      </Tile>
+      <Tile
+        name="에어컨"
+        status={
+          c.available
+            ? c.on
+              ? `${hvacLabels[c.mode]} · 현재 ${c.current ?? "—"}°`
+              : "꺼짐"
+            : "미연동 또는 연결 끊김"
+        }
+        value={!c.available ? "—" : c.on ? (c.mode === "fan_only" ? "송풍" : c.target) : "꺼짐"}
+        unit={c.on && c.mode !== "fan_only" ? "°" : ""}
+        on={c.on}
+        color="var(--cool)"
+        disabled={offline || !c.available}
+        toggle={() => send({ type: "climate", patch: { on: !c.on } })}
+        open={() => open("climate")}
+      >
+        {c.mode !== "fan_only" && <ClimateControls />}
+      </Tile>
+      <Tile
+        name={m.title ?? "미디어"}
+        status={m.title ? m.artist : "재생 중인 미디어가 없어요"}
+        on={!!m.title && m.playing}
+        color="white"
+        open={() => open("media")}
+        className="media-tile"
+      >
+        {m.title && (
+          <div className="control-row">
+            <Pill
+              icon={m.playing ? "pause" : "play"}
+              label={m.playing ? "미디어 일시정지" : "미디어 재생"}
+              active
+              disabled={offline || !m.available || (m.playing ? m.canPause === false : m.canPlay === false)}
+              onClick={() =>
+                send({ type: "media-play", playing: !m.playing })
+              }
+            />
+            <Pill icon="next" label="다음 곡" disabled={offline || !m.available || !m.canNext} onClick={() => send({ type: "media-skip", direction: "next" })} />
+          </div>
+        )}
+      </Tile>
+    </>
+  );
+});
+
 export function DeviceTiles({
   page,
   open,
@@ -283,118 +287,119 @@ export function DeviceTiles({
   toggleNight: () => void;
   clean: () => void;
 }) {
-  const { state, send, offline } = useHome();
+  return (
+    <div className={`device-grid ${page === "home" ? "home-grid" : page === "living" ? "living-grid" : "room-grid"}`}>
+      {page === "home" ? <HomeTiles open={open} brightness={brightness} night={night} toggleNight={toggleNight} clean={clean} /> : <RoomTiles room={page} open={open} />}
+    </div>
+  );
+}
+
+function HomeTiles({ open, brightness, night, toggleNight, clean }: Omit<Parameters<typeof DeviceTiles>[0], "page">) {
+  const { state: rooms, send, offline } = useHome(state => state.rooms);
+  const vent = useHomeValue(state => state.ventilation);
+  const door = useHomeValue(state => state.door);
   const count = roomIds.reduce(
-    (n, id) => n + roomSummary(state.rooms[id]).count,
+    (n, id) => n + roomSummary(rooms[id]).count,
     0,
   );
-  const spaces = roomIds.filter((id) => roomSummary(state.rooms[id]).on).length;
-  const vent = state.ventilation;
-  const lightsAvailable = roomIds.some((id) => state.rooms[id].lights.some((light) => light.available));
+  const spaces = roomIds.filter((id) => roomSummary(rooms[id]).on).length;
+  const lightsAvailable = roomIds.some((id) => rooms[id].lights.some((light) => light.available));
   return (
-    <div
-      className={`device-grid ${page === "home" ? "home-grid" : page === "living" ? "living-grid" : "room-grid"}`}
-    >
-      {page !== "home" ? (
-        <RoomTiles room={page} open={open} />
-      ) : (
-        <>
-          <Tile
-            chevron
-            name="조명"
-            status={!lightsAvailable ? "미연동" : count ? `${spaces}곳 · ${count}개 켜짐` : "모두 꺼짐"}
-            value={count}
-            unit="개"
-            on={count > 0}
+    <>
+      <Tile
+        chevron
+        name="조명"
+        status={!lightsAvailable ? "미연동" : count ? `${spaces}곳 · ${count}개 켜짐` : "모두 꺼짐"}
+        value={count}
+        unit="개"
+        on={count > 0}
+        disabled={offline || !lightsAvailable}
+        toggle={() => send({ type: "all-off" })}
+        open={() => open("light:living")}
+      >
+        <div className="control-row">
+          <Pill
+            icon="dark"
             disabled={offline || !lightsAvailable}
-            toggle={() => send({ type: "all-off" })}
-            open={() => open("light:living")}
+            onClick={() => send({ type: "all-off" })}
           >
-            <div className="control-row">
-              <Pill
-                icon="dark"
-                disabled={offline || !lightsAvailable}
-                onClick={() => send({ type: "all-off" })}
-              >
-                전체 소등
-              </Pill>
-              <Pill icon="tune" onClick={() => open("light:living")}>
-                조명 제어
-              </Pill>
-            </div>
-          </Tile>
-          <Tile
-            chevron
-            name="환기"
-            status={
-              !vent.available ? "미연동 또는 연결 끊김" : vent.boostUntil
-                ? "강풍 · 타이머 운전"
-                : `${fanLabels[vent.mode]} 운전`
-            }
-            value={vent.boostUntil ? "강풍" : fanLabels[vent.mode]}
-            on={!!vent.boostUntil}
-            color="var(--mint)"
-            open={() => open("vent")}
+            전체 소등
+          </Pill>
+          <Pill icon="tune" onClick={() => open("light:living")}>
+            조명 제어
+          </Pill>
+        </div>
+      </Tile>
+      <Tile
+        chevron
+        name="환기"
+        status={
+          !vent.available ? "미연동 또는 연결 끊김" : vent.boostUntil
+            ? "강풍 · 타이머 운전"
+            : `${fanLabels[vent.mode]} 운전`
+        }
+        value={vent.boostUntil ? "강풍" : fanLabels[vent.mode]}
+        on={!!vent.boostUntil}
+        color="var(--mint)"
+        open={() => open("vent")}
+      >
+        <div className="control-row">
+          <Pill
+            icon="auto"
+            disabled={offline || !vent.available || (vent.modes !== undefined && !vent.modes.includes("auto"))}
+            active={!vent.boostUntil && vent.mode === "auto"}
+            onClick={() => send({ type: "ventilation", mode: "auto" })}
           >
-            <div className="control-row">
-              <Pill
-                icon="auto"
-                disabled={offline || !vent.available || (vent.modes !== undefined && !vent.modes.includes("auto"))}
-                active={!vent.boostUntil && vent.mode === "auto"}
-                onClick={() => send({ type: "ventilation", mode: "auto" })}
-              >
-                자동
-              </Pill>
-              <Pill
-                icon="air"
-                disabled={offline || !vent.available || (vent.modes !== undefined && !vent.modes.includes("high"))}
-                active={vent.supportsBoost === false ? vent.mode === "high" : !!vent.boostUntil}
-                onClick={() => send(vent.supportsBoost === false ? { type: "ventilation", mode: "high" } : { type: "boost", on: !vent.boostUntil })}
-              >
-                강풍
-              </Pill>
-            </div>
-          </Tile>
-          <Tile
-            chevron
-            name="화면"
-            status={`밝기 ${brightness}%${night ? " · 야간" : ""}`}
-            value={brightness}
-            unit="%"
-            open={() => open("screen")}
+            자동
+          </Pill>
+          <Pill
+            icon="air"
+            disabled={offline || !vent.available || (vent.modes !== undefined && !vent.modes.includes("high"))}
+            active={vent.supportsBoost === false ? vent.mode === "high" : !!vent.boostUntil}
+            onClick={() => send(vent.supportsBoost === false ? { type: "ventilation", mode: "high" } : { type: "boost", on: !vent.boostUntil })}
           >
-            <div className="control-row">
-              <Pill icon="moon" active={night} onClick={toggleNight}>
-                야간
-              </Pill>
-              <Pill icon="clean" onClick={clean}>
-                청소
-              </Pill>
-            </div>
-          </Tile>
-          <Tile
-            chevron
-            name="현관"
-            status={
-              state.door.configured === false ? "초인종 미연동" : state.door.available === false ? "초인종 연결 끊김" : state.door.missedCalls
-                ? `미확인 ${state.door.missedCalls}${state.door.events[0] ? ` · ${state.door.events[0].time}` : ""}`
-                : "새 호출 없음"
-            }
-            value={state.door.missedCalls || "—"}
-            unit={state.door.missedCalls ? "미확인" : ""}
-            open={() => open("door")}
-          >
-            <div className="control-row">
-              <Pill icon="camera" onClick={() => open("door")}>
-                카메라
-              </Pill>
-              <Pill icon="history" onClick={() => open("door")}>
-                기록
-              </Pill>
-            </div>
-          </Tile>
-        </>
-      )}
-    </div>
+            강풍
+          </Pill>
+        </div>
+      </Tile>
+      <Tile
+        chevron
+        name="화면"
+        status={`밝기 ${brightness}%${night ? " · 야간" : ""}`}
+        value={brightness}
+        unit="%"
+        open={() => open("screen")}
+      >
+        <div className="control-row">
+          <Pill icon="moon" active={night} onClick={toggleNight}>
+            야간
+          </Pill>
+          <Pill icon="clean" onClick={clean}>
+            청소
+          </Pill>
+        </div>
+      </Tile>
+      <Tile
+        chevron
+        name="현관"
+        status={
+          door.configured === false ? "초인종 미연동" : door.available === false ? "초인종 연결 끊김" : door.missedCalls
+            ? `미확인 ${door.missedCalls}${door.events[0] ? ` · ${door.events[0].time}` : ""}`
+            : "새 호출 없음"
+        }
+        value={door.missedCalls || "—"}
+        unit={door.missedCalls ? "미확인" : ""}
+        open={() => open("door")}
+      >
+        <div className="control-row">
+          <Pill icon="camera" onClick={() => open("door")}>
+            카메라
+          </Pill>
+          <Pill icon="history" onClick={() => open("door")}>
+            기록
+          </Pill>
+        </div>
+      </Tile>
+    </>
   );
 }

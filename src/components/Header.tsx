@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
-import { useHome } from "../hooks/useHome";
+import { useHome, useHomeValue, useCommandStatus } from "../hooks/useHome";
 import { useClock } from "../hooks/useClock";
 import { pages } from "../data/rooms";
 import type { PageId } from "../data/types";
@@ -40,10 +40,11 @@ export function Header({
   const temperature = useRef<HTMLElement>(null);
   const standbyLabel = useRef<HTMLSpanElement>(null);
   const standbyPosition = useRef<{ minute: number; x: number; y: number } | null>(null);
-  const { state, pending, offline } = useHome();
+  const { state: e, offline } = useHome(state => state.environment);
+  const weather = useHomeValue(state => state.weather);
+  const { pending } = useCommandStatus();
   const { time, date, period, now } = useClock(hour12);
   const driftMinute = Math.floor(now.getTime() / 60_000);
-  const e = state.environment;
   const gauges = [
     { label: "실내", value: e.indoor, unit: "°", sheet: "indoor", note: null },
     {
@@ -150,11 +151,11 @@ export function Header({
             <Icon name="weather" />
             <span>
               <strong>
-                {state.weather.temperature ?? "—"}
-                {state.weather.temperature !== null && "°"}
+                {weather.temperature ?? "—"}
+                {weather.temperature !== null && "°"}
               </strong>
               <small>
-                {state.weather.high ?? "—"}° / {state.weather.low ?? "—"}°
+                {weather.high ?? "—"}° / {weather.low ?? "—"}°
               </small>
             </span>
           </button>

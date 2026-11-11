@@ -114,3 +114,39 @@ test("standalone camera uses its own Ingress-relative proxy without sharing HA i
   adapter.update(hass({ "camera.selected": entity("unavailable") }), { camera_entity: "camera.selected" });
   assert.equal(adapter.getSnapshot().door.cameraUrl, null);
 });
+
+test("unchanged HA data keeps snapshots stable and changed domains preserve unrelated references", () => {
+  const adapter = createHassAdapter();
+  const config = { indoor_entity: "sensor.indoor", lights: { living: ["light.living"], kitchen: ["light.kitchen"] } };
+  const states = {
+    "sensor.indoor": entity("21"),
+    "light.living": entity("on", { brightness: 128, supported_color_modes: ["brightness"] }),
+    "light.kitchen": entity("off"),
+  };
+  adapter.update(hass(states), config);
+  const first = adapter.getSnapshot();
+  let notifications = 0;
+  adapter.subscribe(() => notifications++);
+  adapter.update(hass(structuredClone(states)), structuredClone(config));
+  assert.equal(adapter.getSnapshot(), first);
+  assert.equal(notifications, 0);
+
+  adapter.update(hass({ ...states, "sensor.indoor": entity("22") }), config);
+  const sensorChange = adapter.getSnapshot();
+  assert.equal(sensorChange.environment.indoor, 22);
+  assert.equal(first.environment.indoor, 21);
+  assert.equal(sensorChange.rooms, first.rooms);
+  assert.equal(sensorChange.climate, first.climate);
+  assert.equal(sensorChange.door, first.door);
+  assert.equal(notifications, 1);
+
+  adapter.update(hass({ ...states, "light.living": entity("off") }), config);
+  const lightChange = adapter.getSnapshot();
+  assert.notEqual(lightChange.rooms.living, first.rooms.living);
+  assert.equal(lightChange.rooms.kitchen, first.rooms.kitchen);
+  assert.equal(first.rooms.living.lights[0].on, true);
+  assert.equal(lightChange.rooms.living.lights[0].on, false);
+  adapter.update(hass(states), { ...config, lights: { living: [] } });
+  assert.equal(adapter.getSnapshot().rooms.living.lights.length, 0);
+  adapter.dispose();
+});

@@ -17,6 +17,7 @@ function StandaloneApp({ adapter }: { adapter: ReturnType<typeof createHassAdapt
   const chime = useCallback(() => playChime(config.local_volume ?? 60), [config.local_volume]);
   const [canConfigure, setCanConfigure] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const openSettings = useCallback(() => setSettingsOpen(true), []);
   useEffect(() => {
     let disposed = false;
     let wasConnected = false;
@@ -45,7 +46,7 @@ function StandaloneApp({ adapter }: { adapter: ReturnType<typeof createHassAdapt
   }, [adapter]);
   return <App
     chime={localDisplay && config.local_sound ? chime : undefined}
-    configure={canConfigure ? () => setSettingsOpen(true) : undefined}
+    configure={canConfigure ? openSettings : undefined}
     configuration={settingsOpen && <ConnectionSettings
       config={config}
       endpoint={endpoint}

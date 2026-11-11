@@ -7,10 +7,10 @@ import { DoorCamera } from "./DoorCamera";
 
 export function DoorCall({ view, chime }: { view: () => void; chime?: () => Promise<void> }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const { send, state } = useHome();
+  const { send, state } = useHome(state => state.door);
   const [soundError, setSoundError] = useState("");
   const played = useRef<string | undefined>(undefined);
-  const callId = state.door.events[0]?.id;
+  const callId = state.events[0]?.id;
   useEffect(() => {
     if (!chime || !callId || played.current === callId) return;
     played.current = callId;
@@ -38,7 +38,7 @@ export function DoorCall({ view, chime }: { view: () => void; chime?: () => Prom
       </header>
       <DoorCamera />
       {soundError && <div role="status"><p>{soundError}</p><Pill onClick={() => { void chime?.().then(() => setSoundError("")).catch(() => setSoundError("소리를 재생하지 못했어요. 스피커 연결을 확인해 주세요.")); }}>벨소리 재생</Pill></div>}
-      {state.door.soundError && <p role="status">{state.door.soundError}</p>}
+      {state.soundError && <p role="status">{state.soundError}</p>}
       <div className="control-row">
         <Pill
           onClick={() => {

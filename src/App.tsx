@@ -1,5 +1,6 @@
 import {
   useCallback,
+  memo,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -7,8 +8,8 @@ import {
 } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { pages, roomSummary, scenes, hvacLabels } from "./data/rooms";
-import type { PageId } from "./data/types";
-import { useHome } from "./hooks/useHome";
+import type { PageId, RoomId } from "./data/types";
+import { useHomeValue } from "./hooks/useHome";
 import { useClock } from "./hooks/useClock";
 import { Header } from "./components/Header";
 import type { SheetId } from "./components/Header";
@@ -23,6 +24,20 @@ export const IDLE_TIMEOUT_MS = 60_000;
 function HomeDate() {
   const { date } = useClock();
   return <>{date}</>;
+}
+
+function HomeSummary() {
+  const rooms = useHomeValue(state => state.rooms);
+  const climateOn = useHomeValue(state => state.climate.on);
+  const mode = useHomeValue(state => state.climate.mode);
+  return <>조명 켜진 공간 {Object.values(rooms).filter(room => roomSummary(room).on).length}곳{climateOn ? ` · 에어컨 ${hvacLabels[mode]}` : ""}</>;
+}
+
+function RoomCaption({ room }: { room: RoomId }) {
+  const state = useHomeValue(state => state.rooms[room]);
+  const summary = roomSummary(state);
+  const scene = scenes[room].find(scene => scene.id === state.scene)?.name;
+  return <>{summary.on ? `조명 켜짐 · ${scene ?? "개별 설정"}` : "조명 꺼짐"}</>;
 }
 
 function readScreenSettings() {
@@ -41,8 +56,8 @@ function readScreenSettings() {
     return { brightness: 70, night: false, hour12: false };
   }
 }
-export function App({ configure, configuration, chime }: { configure?: () => void; configuration?: ReactNode; chime?: () => Promise<void> } = {}) {
-  const { state } = useHome();
+export const App = memo(function App({ configure, configuration, chime }: { configure?: () => void; configuration?: ReactNode; chime?: () => Promise<void> } = {}) {
+  const ringing = useHomeValue(state => state.door.ringing);
   const [viewport, setViewport] = useState(() => ({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -65,14 +80,14 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
   const track = useRef<HTMLDivElement>(null);
   const [standby, setStandby] = useState(false);
   useEffect(() => {
-    if (state.door.ringing) {
+    if (ringing) {
       setStandby(false);
       setCleanDeadline(null);
       setSheet(null);
     }
-  }, [state.door.ringing]);
+  }, [ringing]);
   const pageIndex = pages.findIndex((p) => p.id === page);
-  const pagingBlocked = Boolean(standby || sheet || configuration || cleanDeadline || state.door.ringing);
+  const pagingBlocked = Boolean(standby || sheet || configuration || cleanDeadline || ringing);
   const scrollToPage = useCallback((index: number) => {
     const scroller = track.current;
     if (scroller) scroller.scrollTo({ left: index * scroller.clientWidth, behavior: "instant" });
@@ -89,7 +104,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
     setStandby(true);
   };
   useEffect(() => {
-    if (standby || sheet || configuration || cleanDeadline || state.door.ringing) return;
+    if (standby || sheet || configuration || cleanDeadline || ringing) return;
     let timer: ReturnType<typeof setTimeout>;
     let lastActivity = performance.now();
     const reset = () => {
@@ -109,7 +124,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
       clearTimeout(timer);
       events.forEach((name) => window.removeEventListener(name, reset));
     };
-  }, [standby, sheet, configuration, cleanDeadline, state.door.ringing]);
+  }, [standby, sheet, configuration, cleanDeadline, ringing]);
   useEffect(() => {
     if (!standby) return;
     const wake = (event: KeyboardEvent) => {
@@ -134,15 +149,6 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
       /* Display settings still work without browser storage. */
     }
   };
-  const captionFor = (id: PageId) => {
-    if (id === "home")
-      return portrait
-        ? `조명 켜진 공간 ${Object.values(state.rooms).filter((room) => roomSummary(room).on).length}곳${state.climate.on ? ` · 에어컨 ${hvacLabels[state.climate.mode]}` : ""}`
-        : <HomeDate />;
-    const summary = roomSummary(state.rooms[id]);
-    const scene = scenes[id].find((s) => s.id === state.rooms[id].scene)?.name;
-    return summary.on ? `조명 켜짐 · ${scene ?? "개별 설정"}` : "조명 꺼짐";
-  };
   return (
     <div
       className={`kiosk ${portrait ? "portrait" : "landscape"} ${screen.night ? "night" : ""}`}
@@ -161,6 +167,14 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
           event.preventDefault();
           event.stopPropagation();
           setStandby(false);
+          return;
+        }
+        const button = (event.target as Element).closest("button:enabled");
+        if (button && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          button.animate([{ opacity: 0.45 }, { opacity: 1 }], {
+            duration: 250,
+            easing: "ease-out",
+          });
         }
       }}
     >
@@ -190,7 +204,7 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
             <main className="room-content">
               <div className="room-heading">
                 <h1>{p.name}</h1>
-                <p>{captionFor(p.id)}</p>
+                <p>{p.id === "home" ? (portrait ? <HomeSummary /> : <HomeDate />) : <RoomCaption room={p.id} />}</p>
               </div>
               <DeviceTiles
                 page={p.id}
@@ -247,9 +261,9 @@ export function App({ configure, configuration, chime }: { configure?: () => voi
       {cleanDeadline && (
         <CleaningOverlay deadline={cleanDeadline} finish={finishCleaning} />
       )}
-      {state.door.ringing && <DoorCall view={() => setSheet("door")} chime={chime} />}
-      {!sheet && !state.door.ringing && <CommandError />}
+      {ringing && <DoorCall view={() => setSheet("door")} chime={chime} />}
+      {!sheet && !ringing && <CommandError />}
       {configuration}
     </div>
   );
-}
+});

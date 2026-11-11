@@ -67,7 +67,7 @@ button {
   background: none;
   padding: 0;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgb(255 255 255 / 0.3);
   touch-action: manipulation;
   transition: scale 150ms ease-out, background-color 150ms ease-out;
 }
@@ -514,13 +514,12 @@ input {
   min-width: 72px;
   padding: 0 22px;
   border-radius: 36px;
-  background: oklch(1 0 0 / 0.05);
+  background: oklch(0.25 0 0 / 0.92);
   color: #fff;
   border: 1px solid oklch(1 0 0 / 0.26);
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.38),
     inset 0 -1px 0 oklch(1 0 0 / 0.06);
-  backdrop-filter: blur(16px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -799,8 +798,7 @@ input {
 
 .sheet-dialog {
   color: #fff;
-  background: oklch(0.05 0.005 260 / 0.72);
-  backdrop-filter: blur(48px) saturate(140%);
+  background: oklch(0.08 0.005 260 / 0.98);
   border-radius: 56px;
   border: 0;
   padding: 64px;
