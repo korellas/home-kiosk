@@ -65,8 +65,10 @@ export async function diagnoseKiosk() {
       trace = [];
       await command("Tracing.start", { categories: "devtools.timeline,disabled-by-default-devtools.timeline,disabled-by-default-devtools.timeline.frame,cc", transferMode: "ReportEvents" });
       tracing = true;
-      await command("Input.synthesizeScrollGesture", { x: Math.round(viewport.width * 0.85), y: Math.round(viewport.height * 0.5), xDistance: -Math.round(viewport.width * 0.75), yDistance: 0, speed: 700, gestureSourceType: "touch", preventFling: true }, session);
+      await command("Input.synthesizeScrollGesture", { x: Math.round(viewport.width * 0.85), y: 24, xDistance: -Math.round(viewport.width * 0.75), yDistance: 0, speed: 700, gestureSourceType: "touch", preventFling: true }, session);
       await evaluate("new Promise(resolve=>setTimeout(resolve,400))");
+      const moved = await evaluate("(() => {const track=document.querySelector('.page-track');return Math.abs(track.scrollLeft-track.clientWidth)>track.clientWidth/2;})()");
+      if (!moved) throw new Error("Diagnostic gesture did not move the pager");
       const completed = new Promise(resolve => { traceDone = resolve; });
       await command("Tracing.end");
       await Promise.race([completed, new Promise((_, reject) => { const timer=setTimeout(()=>reject(new Error('Trace completion timeout')),5000); timer.unref(); })]);
