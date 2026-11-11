@@ -97,7 +97,28 @@ export async function createApp({ ha, dataDir, frontendDir, diagnostics, ingress
       if (request.method === "GET" && url.pathname === "/api/session") return json(response, 200, { can_configure: await canConfigure(request), local_display: local(request) && !ingress(request) });
       if (request.method === "GET" && url.pathname === "/api/entities") {
         await admin(request);
-        return json(response, 200, Object.entries(ha.states).filter(([id]) => entityDomains.has(id.split(".")[0])).map(([id, entity]) => ({ id, name: entity.attributes?.friendly_name || id, domain: id.split(".")[0], state: entity.state, unit: entity.attributes?.unit_of_measurement, device_class: entity.attributes?.device_class })).sort((a, b) => a.name.localeCompare(b.name)));
+        const [areas, devices, entries] = await Promise.all([
+          ha.request({ type: "config/area_registry/list" }),
+          ha.request({ type: "config/device_registry/list" }),
+          ha.request({ type: "config/entity_registry/list" }),
+        ]);
+        const deviceById = new Map(devices.map(device => [device.id, device]));
+        const entryById = new Map(entries.map(entry => [entry.entity_id, entry]));
+        const entities = Object.entries(ha.states).filter(([id]) => entityDomains.has(id.split(".")[0])).flatMap(([id, entity]) => {
+          const entry = entryById.get(id);
+          if ((entry?.hidden_by || entry?.disabled_by) && !selected.has(id)) return [];
+          const device = deviceById.get(entry?.device_id);
+          const attributes = entity.attributes || {};
+          return [{
+            id, name: attributes.friendly_name || entry?.name || id,
+            domain: id.split(".")[0], state: entity.state,
+            area_id: entry?.area_id ?? device?.area_id ?? null,
+            device_name: device?.name_by_user || device?.name || undefined,
+            unit: attributes.unit_of_measurement, device_class: attributes.device_class,
+            hvac_modes: attributes.hvac_modes, supported_color_modes: attributes.supported_color_modes,
+          }];
+        }).sort((a, b) => a.name.localeCompare(b.name));
+        return json(response, 200, { areas: areas.map(area => ({ id: area.area_id, name: area.name })), entities });
       }
       if (request.method === "PUT" && url.pathname === "/api/settings") {
         await admin(request);

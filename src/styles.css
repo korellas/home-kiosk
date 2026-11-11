@@ -1358,6 +1358,8 @@ input {
 .connection-form .sheet-heading p { margin-top: 12px; font-size: 24px; color: var(--muted); }
 .connection-tabs { display: flex; gap: 12px; flex: none; }
 .connection-body { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 28px; padding: 8px 4px 24px; flex: 1; }
+.connection-filters { display: flex; flex-wrap: wrap; gap: 24px; }
+.connection-filters .connection-field { flex: 1 1 300px; min-width: 0; }
 .connection-help, .connection-field small { color: var(--muted); font-size: 22px; line-height: 1.55; }
 .connection-search { display: flex; align-items: center; gap: 24px; }
 .connection-search input, .connection-field input { flex: 1; min-width: 0; font: inherit; color: inherit; background: #202326; padding: 20px; border: 1px solid var(--line); border-radius: 16px; }

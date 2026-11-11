@@ -15,9 +15,20 @@ class FakeHA extends EventEmitter {
     "light.private": { state: "on", attributes: {} },
   };
   users = [{ id: "admin", is_active: true, group_ids: ["system-admin"] }, { id: "viewer", is_active: true, group_ids: ["system-users"] }];
+  registries = {
+    "config/area_registry/list": [{ area_id: "living", name: "거실" }, { area_id: "bedroom", name: "침실" }],
+    "config/device_registry/list": [{ id: "ac", name: "에어컨", name_by_user: "거실 에어컨", area_id: "living", identifiers: ["private-device-id"] }],
+    "config/entity_registry/list": [
+      { entity_id: "light.private", device_id: "ac", area_id: "bedroom" },
+      { entity_id: "sensor.temperature", device_id: "ac", area_id: null },
+      { entity_id: "sensor.hidden", hidden_by: "user" },
+      { entity_id: "sensor.disabled", disabled_by: "user" },
+    ],
+  };
   calls = [];
   async request(message) {
     if (message.type === "call_service") { this.calls.push(message); return; }
+    if (this.registries[message.type]) return this.registries[message.type];
     assert.equal(message.type, "config/auth/list");
     if (!this.connected) throw new Error("offline");
     return this.users;
@@ -118,4 +129,35 @@ test("diagnostics require debug mode, an ingress administrator and same-origin P
       } finally { await app.close(); }
     }
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+
+test("entity choices inherit device areas, respect entity overrides and omit registry secrets", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "home-kiosk-choices-"));
+  const ha = new FakeHA();
+  ha.states["sensor.temperature"] = { state: "25", attributes: { friendly_name: "온도", device_class: "temperature", unit_of_measurement: "°C", private_attribute: "secret" } };
+  ha.states["sensor.hidden"] = { state: "1", attributes: {} };
+  ha.states["sensor.disabled"] = { state: "2", attributes: {} };
+  const app = await createApp({ ha, dataDir: dir, frontendDir: dir, ingressAddress: "127.0.0.1" });
+  app.server.listen(0, "127.0.0.1");
+  await new Promise(resolve => app.server.once("listening", resolve));
+  const url = `http://127.0.0.1:${app.server.address().port}/api/entities`;
+  try {
+    const headers = { "X-Remote-User-Id": "admin" };
+    const catalog = await (await fetch(url, { headers })).json();
+    assert.deepEqual(catalog.areas, [{ id: "living", name: "거실" }, { id: "bedroom", name: "침실" }]);
+    const temperature = catalog.entities.find(e => e.id === "sensor.temperature");
+    assert.equal(temperature.area_id, "living");
+    assert.equal(temperature.device_name, "거실 에어컨");
+    assert.equal(temperature.device_class, "temperature");
+    assert.equal(temperature.unit, "°C");
+    assert.equal(catalog.entities.find(e => e.id === "light.private").area_id, "bedroom");
+    assert.equal(catalog.entities.find(e => e.id === "camera.entry").area_id, null);
+    assert.equal(catalog.entities.some(e => ["sensor.hidden", "sensor.disabled"].includes(e.id)), false);
+    assert.doesNotMatch(JSON.stringify(catalog), /camera-secret|private-device-id|private_attribute|access_token/);
+    // A registry failure must be reported instead of presenting an empty successful list.
+    ha.registries["config/area_registry/list"] = undefined;
+    assert.equal((await fetch(url, { headers })).status, 503);
+    assert.equal((await fetch(url, { headers: { "X-Remote-User-Id": "viewer" } })).status, 403);
+  } finally { await app.close(); await rm(dir, { recursive: true, force: true }); }
 });
