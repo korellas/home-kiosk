@@ -1,3 +1,4 @@
 #!/usr/bin/with-contenv bashio
 # shellcheck shell=bash
+if bashio::config.true debug; then export HOME_KIOSK_DEBUG=1; fi
 exec node /opt/home-kiosk/server/index.mjs

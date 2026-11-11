@@ -41,7 +41,7 @@ chromium_args=(
 )
 if bashio::config.true 'debug'; then
     cage_args+=(-D)
-    chromium_args+=(--enable-logging=stderr --log-level=0)
+    chromium_args+=(--enable-logging=stderr --log-level=0 --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222)
 fi
 # Invoked by the TERM/INT trap below.
 # shellcheck disable=SC2317,SC2329

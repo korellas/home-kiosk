@@ -18,7 +18,8 @@ const peer = (request) => request.socket.remoteAddress?.replace(/^::ffff:/, "");
 const local = (request) => ["127.0.0.1", "::1"].includes(peer(request));
 const entityDomains = new Set([...Object.values(entityFields).flat(), "light", "scene"]);
 
-export async function createApp({ ha, dataDir, frontendDir, ingressAddress = "172.30.32.2" }) {
+export async function createApp({ ha, dataDir, frontendDir, diagnostics, ingressAddress = "172.30.32.2" }) {
+  let diagnosing = false;
   const root = resolve(frontendDir);
   const configFile = join(dataDir, "connection.json");
   let config;
@@ -83,6 +84,15 @@ export async function createApp({ ha, dataDir, frontendDir, ingressAddress = "17
     try {
       if (!ingress(request) && !local(request)) throw new HTTPError(403, "Home Assistant를 통해 접속해 주세요.");
       const url = new URL(request.url, "http://internal");
+      if (request.method === "POST" && url.pathname === "/api/diagnostics") {
+        if (!diagnostics) throw new HTTPError(404, "진단 모드가 꺼져 있습니다.");
+        await admin(request);
+        await body(request);
+        if (diagnosing) throw new HTTPError(409, "진단이 진행 중입니다.");
+        diagnosing = true;
+        try { return json(response, 200, await diagnostics()); }
+        finally { diagnosing = false; }
+      }
       if (request.method === "GET" && url.pathname === "/health") return json(response, 200, { ready: true });
       if (request.method === "GET" && url.pathname === "/api/session") return json(response, 200, { can_configure: await canConfigure(request), local_display: local(request) && !ingress(request) });
       if (request.method === "GET" && url.pathname === "/api/entities") {

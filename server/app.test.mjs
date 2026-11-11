@@ -98,3 +98,24 @@ test("physical controls are restricted to selected devices and settings remain a
     assert.equal((await (await fetch(`${base}/api/session`)).json()).local_display, true);
   } finally { await app.close(); await rm(dir, { recursive: true, force: true }); }
 });
+
+test("diagnostics require debug mode, an ingress administrator and same-origin POST", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "home-kiosk-diagnostics-"));
+  const headers = { "X-Remote-User-Id": "admin", "Content-Type": "application/json", "X-Home-Kiosk": "settings" };
+  try {
+    for (const enabled of [false, true]) {
+      let calls = 0;
+      const app = await createApp({ ha: new FakeHA(), dataDir: dir, frontendDir: dir, ingressAddress: "127.0.0.1", diagnostics: enabled ? async () => { calls++; return { gpu: "test" }; } : undefined });
+      app.server.listen(0, "127.0.0.1");
+      await new Promise(resolve => app.server.once("listening", resolve));
+      const url = `http://127.0.0.1:${app.server.address().port}/api/diagnostics`;
+      try {
+        assert.equal((await fetch(url, { method: "POST", headers: { ...headers, "X-Remote-User-Id": "viewer" }, body: "{}" })).status, enabled ? 403 : 404);
+        assert.equal((await fetch(url, { method: "POST", headers: { ...headers, "Sec-Fetch-Site": "cross-site" }, body: "{}" })).status, enabled ? 403 : 404);
+        assert.equal(calls, 0);
+        assert.equal((await fetch(url, { method: "POST", headers, body: "{}" })).status, enabled ? 200 : 404);
+        assert.equal(calls, enabled ? 1 : 0);
+      } finally { await app.close(); }
+    }
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
