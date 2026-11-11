@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { pages, roomSummary, scenes, hvacLabels } from "./data/rooms";
-import type { PageId, RoomId } from "./data/types";
+import type { PageId, RoomId, ScreenTheme } from "./data/types";
 import { useHomeValue } from "./hooks/useHome";
 import { useClock } from "./hooks/useClock";
 import { Header } from "./components/Header";
@@ -51,9 +51,10 @@ function readScreenSettings() {
         : 70,
       night: settings.night === true,
       hour12: settings.hour12 === true,
+      theme: (settings.theme === "classic" ? "classic" : "glass") as ScreenTheme,
     };
   } catch {
-    return { brightness: 70, night: false, hour12: false };
+    return { brightness: 70, night: false, hour12: false, theme: "glass" as ScreenTheme };
   }
 }
 export const App = memo(function App({ configure, configuration, chime }: { configure?: () => void; configuration?: ReactNode; chime?: () => Promise<void> } = {}) {
@@ -151,7 +152,7 @@ export const App = memo(function App({ configure, configuration, chime }: { conf
   };
   return (
     <div
-      className={`kiosk ${portrait ? "portrait" : "landscape"} ${screen.night ? "night" : ""}`}
+      className={`kiosk theme-${screen.theme} ${portrait ? "portrait" : "landscape"} ${screen.night ? "night" : ""}`}
       style={
         {
           width: viewport.width / scale,
@@ -253,6 +254,8 @@ export const App = memo(function App({ configure, configuration, chime }: { conf
           night={screen.night}
           hour12={screen.hour12}
           setHour12={(hour12) => settings({ hour12 })}
+          theme={screen.theme}
+          setTheme={(theme) => settings({ theme })}
           toggleNight={() => settings({ night: !screen.night })}
           clean={clean}
           standby={enterStandby}

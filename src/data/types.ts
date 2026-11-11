@@ -1,5 +1,6 @@
 export type RoomId = "living" | "kitchen" | "dining";
 export type PageId = "home" | RoomId;
+export type ScreenTheme = "classic" | "glass";
 export type HvacMode = "cool" | "dry" | "fan_only" | "auto" | "heat" | "heat_cool";
 export type FanMode = "auto" | "low" | "medium" | "high";
 

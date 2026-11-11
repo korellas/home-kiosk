@@ -23,7 +23,7 @@
   font-display: block;
 }
 :root {
-  font-family: Geist, "Pretendard Variable", Pretendard, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Pretendard Variable", Geist, sans-serif;
   color: #fff;
   background: #000;
   font-synthesis: none;
@@ -32,7 +32,7 @@
   --cool: oklch(0.82 0.1 235);
   --mint: oklch(0.84 0.1 175);
   --muted: oklch(1 0 0 / 0.64);
-  --line: oklch(1 0 0 / 0.22);
+  --line: oklch(1 0 0 / 0.14);
   --body: 24px;
   --name: 28px;
   --control: 72px;
@@ -212,10 +212,10 @@ input {
 .photo-shade {
   background: linear-gradient(
     180deg,
-    oklch(0 0 0 / 0.55),
+    oklch(0 0 0 / 0.64),
     oklch(0 0 0 / 0) 34%,
     oklch(0 0 0 / 0.2) 56%,
-    oklch(0 0 0 / 0.88)
+    oklch(0 0 0 / 0.5)
   );
   pointer-events: none;
 }
@@ -241,9 +241,9 @@ input {
   display: block;
   width: max-content;
   font-size: 120px;
-  font-weight: 200;
-  letter-spacing: -0.06em;
-  line-height: 0.85;
+  font-weight: 300;
+  letter-spacing: -0.055em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   margin-left: -4px;
 }
@@ -341,20 +341,30 @@ input {
 }
 .room-nav {
   display: flex;
-  gap: 44px;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgb(255 255 255 / 0.32);
+  border-radius: 32px;
+  background: linear-gradient(135deg, #ffffff24, #ffffff06 50%, #ffffff14), rgb(20 24 30 / 0.16);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: inset 0 1px 0 #ffffff70, inset 0 -1px 0 #ffffff20, 0 8px 24px #0002;
 }
 .room-nav button {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding: 14px 0;
-  font-size: 28px;
+  padding: 12px 26px;
+  border-radius: 26px;
+  font-size: 26px;
   font-weight: 500;
-  color: oklch(1 0 0 / 0.5);
+  color: oklch(1 0 0 / 0.8);
   white-space: nowrap;
 }
 .room-nav button.active {
   color: #fff;
+  background: linear-gradient(160deg, #ffffff52, #ffffff1a);
+  box-shadow: inset 0 1px 0 #ffffff80, inset 0 -1px 0 #ffffff28, 0 2px 8px #0002;
 }
 .connection {
   font-size: 20px;
@@ -367,7 +377,7 @@ input {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 48px;
 }
 .room-heading {
   display: flex;
@@ -378,8 +388,8 @@ input {
   padding: 0 80px;
 }
 .room-heading h1 {
-  font-size: 168px;
-  font-weight: 200;
+  font-size: 112px;
+  font-weight: 500;
   letter-spacing: -0.06em;
   line-height: 0.95;
   margin-left: -8px;
@@ -392,8 +402,8 @@ input {
 }
 .device-grid {
   display: grid;
-  border-top: 1px solid oklch(1 0 0 / 0.3);
-  padding: 0 48px;
+  gap: 16px;
+  padding: 0 64px;
 }
 .living-grid {
   grid-template-columns:
@@ -410,32 +420,34 @@ input {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
 }
 .device-tile {
-  height: 300px;
-  padding: 24px 32px 44px;
-  border-left: 1px solid oklch(1 0 0 / 0.18);
+  min-height: 324px;
+  padding: 24px;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: 32px;
+  background: linear-gradient(135deg, #ffffff22, #ffffff03 45%, #ffffff12), rgb(16 22 28 / 0.2);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: inset 0 1px 0 #ffffff80, inset 1px 0 0 #ffffff20, inset 0 -1px 0 #ffffff30, 0 12px 32px #0002;
+  text-shadow: 0 1px 6px #0006;
+  gap: 24px;
   display: flex;
   flex-direction: column;
   min-width: 0;
   position: relative;
 }
-.device-tile:first-child {
-  border-left: 0;
-}
 .device-tile.is-on {
-  background: radial-gradient(
-    120% 70% at 50% 118%,
-    color-mix(in oklch, var(--accent) 24%, transparent),
-    transparent 72%
-  );
+  border-color: color-mix(in oklch, var(--accent) 45%, #ffffff40);
 }
 .device-copy {
-  display: contents;
+  display: block;
+  min-width: 0;
 }
 .device-name {
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 52px;
+  min-height: 44px;
+  width: 100%;
   font-size: 28px;
   font-weight: 500;
   text-align: left;
@@ -461,16 +473,19 @@ input {
 .is-on .device-dot {
   border: 0;
   background: var(--accent);
-  box-shadow: 0 0 16px 3px var(--accent);
+  box-shadow: none;
 }
 .device-detail {
   text-align: left;
-  display: contents;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border-radius: 12px;
 }
 .device-status {
   display: block;
   font-size: 24px;
-  color: oklch(1 0 0 / 0.64);
+  color: oklch(1 0 0 / 0.84);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -478,13 +493,15 @@ input {
 }
 .device-value {
   display: block;
-  font-size: 72px;
-  font-weight: 200;
+  font-size: 60px;
+  font-weight: 400;
   letter-spacing: -0.05em;
   line-height: 1;
   margin-top: 16px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .device-value small {
   font-size: 28px;
@@ -495,6 +512,7 @@ input {
 }
 .device-controls {
   margin-top: auto;
+  min-width: 0;
   display: flex;
 }
 .device-controls > .slider,
@@ -511,12 +529,10 @@ input {
   min-width: 72px;
   padding: 0 22px;
   border-radius: 36px;
-  background: oklch(0.25 0 0 / 0.92);
+  background: linear-gradient(160deg, #ffffff26, #ffffff08), rgb(12 18 24 / 0.12);
   color: #fff;
-  border: 1px solid oklch(1 0 0 / 0.26);
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.38),
-    inset 0 -1px 0 oklch(1 0 0 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  box-shadow: inset 0 1px 0 #ffffff48, 0 2px 6px #0001;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -528,8 +544,9 @@ input {
   transition: scale 150ms ease-out, background-color 150ms ease-out;
 }
 .pill.selected {
-  background: #fff;
-  color: #111;
+  background: linear-gradient(160deg, #fffffff2, #ffffffb8);
+  color: #17202a;
+  text-shadow: none;
 }
 .pill.icon-only {
   height: 72px;
@@ -539,6 +556,7 @@ input {
 }
 .scenes {
   gap: 10px;
+  flex-wrap: wrap;
 }
 .scenes .pill {
   padding: 0 16px;
@@ -650,7 +668,7 @@ input {
     oklch(0 0 0 / 0.6),
     oklch(0 0 0 / 0) 28%,
     oklch(0 0 0 / 0.3) 45%,
-    oklch(0 0 0 / 0.9) 70%
+    oklch(0 0 0 / 0.5) 70%
   );
 }
 .portrait .header-main {
@@ -702,7 +720,7 @@ input {
   border-left: 0;
 }
 .portrait .room-content {
-  padding-bottom: 72px;
+  padding-bottom: 16px;
 }
 .portrait .device-grid {
   display: flex;
@@ -712,12 +730,11 @@ input {
 }
 .portrait .device-tile {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 440px;
+  grid-template-columns: minmax(0, 1fr) 420px;
   align-items: center;
   gap: 28px;
-  padding: 24px 0;
-  border-top: 1px solid oklch(1 0 0 / 0.22);
-  border-left: 0;
+  padding: 24px;
+  min-height: 132px;
   height: auto;
 }
 .portrait .device-copy {
@@ -745,8 +762,8 @@ input {
   display: block;
   flex: none;
   margin-left: auto;
-  font-size: 52px;
-  font-weight: 200;
+  font-size: 42px;
+  font-weight: 400;
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -795,7 +812,9 @@ input {
 
 .sheet-dialog {
   color: #fff;
-  background: oklch(0.08 0.005 260 / 0.98);
+  background: linear-gradient(145deg, #ffffff10, transparent 55%), rgb(18 24 30 / 0.86);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
   border-radius: 56px;
   border: 0;
   padding: 64px;
@@ -838,8 +857,8 @@ input {
   padding-bottom: 12px;
 }
 .sheet-heading h2 {
-  font-size: 84px;
-  font-weight: 200;
+  font-size: 64px;
+  font-weight: 500;
   letter-spacing: -0.06em;
   line-height: 1.1;
   white-space: nowrap;
@@ -1793,4 +1812,99 @@ input {
 .standby .gauge,
 .standby .gauges {
   border-color: transparent;
+}
+
+.theme-classic {
+  font-family: Geist, "Pretendard Variable", Pretendard, sans-serif;
+  --line: oklch(1 0 0 / 0.22);
+}
+.theme-classic .photo-shade {
+  background: linear-gradient(180deg, #0009, transparent 34%, #0003 56%, #000e);
+}
+.theme-classic.portrait .photo-shade {
+  background: linear-gradient(180deg, #0009, transparent 28%, #0005 45%, #000e 70%);
+}
+.theme-classic .clock time {
+  font-weight: 200;
+  letter-spacing: -0.06em;
+}
+.theme-classic .room-nav {
+  gap: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.theme-classic .room-nav button {
+  padding: 14px 0;
+  font-size: 28px;
+  color: oklch(1 0 0 / 0.5);
+}
+.theme-classic .room-nav button.active {
+  color: #fff;
+  background: none;
+  box-shadow: none;
+}
+.theme-classic .room-heading h1 {
+  font-size: 168px;
+  font-weight: 200;
+}
+.theme-classic .device-grid {
+  gap: 0;
+  padding: 0 48px;
+  border-top: 1px solid oklch(1 0 0 / 0.3);
+}
+.theme-classic .device-tile {
+  padding: 24px 32px 44px;
+  border: 0;
+  border-left: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+.theme-classic .device-tile:first-child { border-left: 0; }
+.theme-classic .device-tile.is-on {
+  background: radial-gradient(120% 70% at 50% 118%, color-mix(in oklch, var(--accent) 24%, transparent), transparent 72%);
+}
+.theme-classic .is-on .device-dot { box-shadow: 0 0 16px 3px var(--accent); }
+.theme-classic .device-status { color: oklch(1 0 0 / 0.64); }
+.theme-classic .device-value {
+  font-size: 72px;
+  font-weight: 200;
+}
+.theme-classic .pill {
+  background: oklch(0.25 0 0 / 0.92);
+  border-color: oklch(1 0 0 / 0.26);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.38), inset 0 -1px 0 oklch(1 0 0 / 0.06);
+}
+.theme-classic .pill.selected {
+  background: #fff;
+  color: #111;
+}
+.theme-classic.portrait .device-grid {
+  padding: 0 80px;
+  border-top: 0;
+}
+.theme-classic.portrait .device-tile {
+  padding: 24px 0;
+  border-left: 0;
+  border-top: 1px solid oklch(1 0 0 / 0.22);
+}
+.theme-classic.portrait .portrait-value {
+  font-size: 52px;
+  font-weight: 200;
+}
+.theme-classic .sheet-dialog {
+  background: oklch(0.08 0.005 260 / 0.98);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.theme-classic .sheet-heading h2 {
+  font-size: 84px;
+  font-weight: 200;
 }

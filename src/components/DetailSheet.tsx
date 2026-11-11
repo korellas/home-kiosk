@@ -11,7 +11,7 @@ import {
   roomIds,
   roomSummary,
 } from "../data/rooms";
-import type { RoomId } from "../data/types";
+import type { RoomId, ScreenTheme } from "../data/types";
 import type { SheetId } from "./Header";
 import { ActionButton, Pill, Slider, Stat } from "./Controls";
 import { Icon } from "./Icon";
@@ -37,6 +37,8 @@ export function DetailSheet({
   toggleNight,
   hour12,
   setHour12,
+  theme,
+  setTheme,
   clean,
   standby,
 }: {
@@ -49,6 +51,8 @@ export function DetailSheet({
   toggleNight: () => void;
   hour12: boolean;
   setHour12: (value: boolean) => void;
+  theme: ScreenTheme;
+  setTheme: (value: ScreenTheme) => void;
   clean: () => void;
   standby: () => void;
 }) {
@@ -572,6 +576,10 @@ export function DetailSheet({
           ))}
         {sheet === "screen" && (
           <>
+            <div className="control-row" role="group" aria-label="테마">
+              <Pill active={theme === "classic"} onClick={() => setTheme("classic")}>기본</Pill>
+              <Pill active={theme === "glass"} onClick={() => setTheme("glass")}>글래스</Pill>
+            </div>
             <div className="control-row" role="group" aria-label="시간 표시">
               <Pill active={hour12} onClick={() => setHour12(true)}>12시간제</Pill>
               <Pill active={!hour12} onClick={() => setHour12(false)}>24시간제</Pill>
