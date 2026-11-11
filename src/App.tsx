@@ -171,8 +171,8 @@ export const App = memo(function App({ configure, configuration, chime }: { conf
         }
         const button = (event.target as Element).closest("button:enabled");
         if (button && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-          button.animate([{ opacity: 0.45 }, { opacity: 1 }], {
-            duration: 250,
+          button.animate([{ scale: "0.98" }, { scale: "1" }], {
+            duration: 120,
             easing: "ease-out",
           });
         }
