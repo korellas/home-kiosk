@@ -1813,3 +1813,98 @@ input {
 .standby .gauges {
   border-color: transparent;
 }
+
+.theme-classic {
+  font-family: Geist, "Pretendard Variable", Pretendard, sans-serif;
+  --line: oklch(1 0 0 / 0.22);
+}
+.theme-classic .photo-shade {
+  background: linear-gradient(180deg, #0009, transparent 34%, #0003 56%, #000e);
+}
+.theme-classic.portrait .photo-shade {
+  background: linear-gradient(180deg, #0009, transparent 28%, #0005 45%, #000e 70%);
+}
+.theme-classic .clock time {
+  font-weight: 200;
+  letter-spacing: -0.06em;
+}
+.theme-classic .room-nav {
+  gap: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.theme-classic .room-nav button {
+  padding: 14px 0;
+  font-size: 28px;
+  color: oklch(1 0 0 / 0.5);
+}
+.theme-classic .room-nav button.active {
+  color: #fff;
+  background: none;
+  box-shadow: none;
+}
+.theme-classic .room-heading h1 {
+  font-size: 168px;
+  font-weight: 200;
+}
+.theme-classic .device-grid {
+  gap: 0;
+  padding: 0 48px;
+  border-top: 1px solid oklch(1 0 0 / 0.3);
+}
+.theme-classic .device-tile {
+  padding: 24px 32px 44px;
+  border: 0;
+  border-left: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+.theme-classic .device-tile:first-child { border-left: 0; }
+.theme-classic .device-tile.is-on {
+  background: radial-gradient(120% 70% at 50% 118%, color-mix(in oklch, var(--accent) 24%, transparent), transparent 72%);
+}
+.theme-classic .is-on .device-dot { box-shadow: 0 0 16px 3px var(--accent); }
+.theme-classic .device-status { color: oklch(1 0 0 / 0.64); }
+.theme-classic .device-value {
+  font-size: 72px;
+  font-weight: 200;
+}
+.theme-classic .pill {
+  background: oklch(0.25 0 0 / 0.92);
+  border-color: oklch(1 0 0 / 0.26);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.38), inset 0 -1px 0 oklch(1 0 0 / 0.06);
+}
+.theme-classic .pill.selected {
+  background: #fff;
+  color: #111;
+}
+.theme-classic.portrait .device-grid {
+  padding: 0 80px;
+  border-top: 0;
+}
+.theme-classic.portrait .device-tile {
+  padding: 24px 0;
+  border-left: 0;
+  border-top: 1px solid oklch(1 0 0 / 0.22);
+}
+.theme-classic.portrait .portrait-value {
+  font-size: 52px;
+  font-weight: 200;
+}
+.theme-classic .sheet-dialog {
+  background: oklch(0.08 0.005 260 / 0.98);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.theme-classic .sheet-heading h2 {
+  font-size: 84px;
+  font-weight: 200;
+}
